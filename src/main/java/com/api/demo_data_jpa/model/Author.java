@@ -4,8 +4,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.TableGenerator;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,10 +18,12 @@ import lombok.NoArgsConstructor;
 public class Author {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "author_sequence")
-    @SequenceGenerator(
-        name = "author_sequence",
-        sequenceName = "author_sequence",
+    @GeneratedValue(strategy = GenerationType.TABLE, generator = "author_id_generator")
+    @TableGenerator(
+        name = "author_id_generator",
+        table = "author_id_table",
+        pkColumnName = "id_name",
+        valueColumnName = "id_value",
         allocationSize = 1
     )
     private Integer id;
@@ -45,8 +47,14 @@ public class Author {
  *            - @SequenceGenerator: Define a sequência usada para gerar a chave primária.
  *                  - name: Nome da sequência.
  *                  - sequenceName: Nome da sequência no banco de dados.
- *                 - allocationSize: Tamanho do bloco de alocação para a sequência.
+ *                  - allocationSize: Tamanho do bloco de alocação para a sequência.
  *      - strategy = GenerationType.TABLE: A chave primária é gerada usando uma tabela auxiliar.
+ *            - @TableGenerator: Define a tabela usada para gerar a chave primária.
+ *                  - name: Nome do gerador de tabela.
+ *                  - table: Nome da tabela auxiliar.
+ *                  - pkColumnName: Nome da coluna que armazena a chave primária.
+ *                  - valueColumnName: Nome da coluna que armazena o valor da chave primária.
+ *                  - allocationSize: Tamanho do bloco de alocação para a tabela.
  * @Data: Gera automaticamente os métodos getters, setters, toString, equals e hashCode.
  *      - Inclui: @Getter, @Setter, @ToString, @EqualsAndHashCode e @RequiredArgsConstructor.
  * @AllArgsConstructor: Gera um construtor com todos os campos.
