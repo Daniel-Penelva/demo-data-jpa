@@ -5,7 +5,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.TableGenerator;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -18,14 +17,7 @@ import lombok.NoArgsConstructor;
 public class Author {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.TABLE, generator = "author_id_generator")
-    @TableGenerator(
-        name = "author_id_generator",
-        table = "author_id_table",
-        pkColumnName = "id_name",
-        valueColumnName = "id_value",
-        allocationSize = 1
-    )
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     private String firstName;
     private String lastName;
