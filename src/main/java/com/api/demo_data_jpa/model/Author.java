@@ -111,6 +111,10 @@ public class Author {
  * @Enumerated: Especifica que o campo é um tipo enumerado.
  *      - EnumType.STRING: Armazena o valor do enum como uma string.
  *      - EnumType.ORDINAL: Armazena o valor do enum como um número inteiro (posição).
+ * @Bits: Define que o campo deve ser tratado como um tipo de dado binário.
+ *     - length: Define o tamanho do campo binário.
+ * @BigDecimal: Define que o campo deve ser tratado como um tipo de dado decimal grande.
+ * @BigInteger: Define que o campo deve ser tratado como um tipo de dado inteiro grande.
  * @Convert: Define um conversor personalizado para o campo.
  *      - converter: Classe que implementa a interface AttributeConverter.
  *      - autoApply: Indica se o conversor deve ser aplicado automaticamente.
