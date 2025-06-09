@@ -14,7 +14,17 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table
+@Table(
+    name = "AUTHOR_TBL",
+    schema = "public",
+    catalog = "demo_data_jpa_bd",
+    uniqueConstraints = {
+        @jakarta.persistence.UniqueConstraint(columnNames = {"email"})
+    },
+    indexes = {
+        @jakarta.persistence.Index(name = "idx_author_email", columnList = "email")
+    }
+)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -49,6 +59,12 @@ public class Author {
  * Anotação:
  * @Entity: Indica que a classe é uma entidade JPA.
  * @Table: Especifica o nome da tabela no banco de dados.
+ *      - name: Nome da tabela no banco de dados.
+ *      - schema: Esquema do banco de dados onde a tabela está localizada.
+ *      - catalog: Catálogo do banco de dados onde a tabela está localizada.
+ *      - uniqueConstraints: Define restrições de unicidade para colunas na tabela.
+ *      - indexes: Define índices para colunas na tabela.
+ *      - indexes = @Index: Define um índice para uma coluna específica.
  * @Id: Indica o campo que é a chave primária da entidade.
  * @GeneratedValue: Define a estratégia de geração de valores para a chave primária.
  *      - strategy = GenerationType.IDENTITY: A chave primária é gerada pelo banco de dados.
