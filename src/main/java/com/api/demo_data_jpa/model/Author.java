@@ -1,5 +1,9 @@
 package com.api.demo_data_jpa.model;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -19,10 +23,24 @@ public class Author {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
+
+    @Column(name = "first_name", nullable = false, length = 35)
     private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
     private String lastName;
+    
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
+    
+    @Column(nullable = false)
     private int age;
+
+    @Column(name = "created_at", updatable = false, nullable = false, columnDefinition = "DATE")
+    private LocalDate createdAt;
+
+    @Column(name = "last_modified", insertable = false, nullable = false, columnDefinition = "TIMESTAMP")
+    private LocalDateTime lastModified;
     
 }
 
@@ -63,6 +81,26 @@ public class Author {
  *      - unique: Indica se a coluna deve ser única.
  *      - length: Define o tamanho máximo da coluna (aplicável a campos String).
  *      - columnDefinition: Define a definição SQL da coluna.
+ *      - insertable: Indica se a coluna pode ser incluída em operações de inserção.
+ *      - updatable: Indica se a coluna pode ser atualizada.
+ *      - precision: Define a precisão para campos numéricos.
+ *      - scale: Define a escala para campos numéricos.
+ *      - table: Especifica a tabela onde a coluna está localizada (se diferente da tabela da entidade).
+ *      - uniqueConstraints: Define restrições de unicidade para a coluna.
+ * @Basic: Define propriedades básicas para o campo.
+ *      - fetch: Define o tipo de carregamento (EAGER ou LAZY).
+ *      - optional: Indica se o campo é opcional.
+ * @Access: Define o tipo de acesso aos campos (por exemplo, FIELD ou PROPERTY).
+ * @AccessType: Define o tipo de acesso aos campos (por exemplo, FIELD ou PROPERTY).
+ * @Enumerated: Especifica que o campo é um tipo enumerado.
+ *      - EnumType.STRING: Armazena o valor do enum como uma string.
+ *      - EnumType.ORDINAL: Armazena o valor do enum como um número inteiro (posição).
+ * @Convert: Define um conversor personalizado para o campo.
+ *      - converter: Classe que implementa a interface AttributeConverter.
+ *      - autoApply: Indica se o conversor deve ser aplicado automaticamente.
+ * @ConvertAttribute: Define um conversor personalizado para o campo.
+ *      - converter: Classe que implementa a interface AttributeConverter.
+ *      - autoApply: Indica se o conversor deve ser aplicado automaticamente.
  * @Lob: Indica que o campo deve ser tratado como um tipo de dado grande (LOB).
  * @Transient: Indica que o campo não deve ser persistido no banco de dados.
  * @Temporal: Especifica o tipo de data/hora para campos do tipo Date.
