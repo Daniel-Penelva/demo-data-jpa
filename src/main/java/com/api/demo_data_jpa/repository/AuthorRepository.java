@@ -7,6 +7,8 @@ import com.api.demo_data_jpa.model.Author;
 
 @Repository
 public interface AuthorRepository extends JpaRepository<Author, Integer>{
+
+    Author findByEmail(String email);
     
 }
 

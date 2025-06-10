@@ -1,8 +1,5 @@
 package com.api.demo_data_jpa.model;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -10,24 +7,16 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(
-    name = "AUTHOR_TBL",
-    schema = "public",
-    catalog = "demo_data_jpa_bd",
-    uniqueConstraints = {
-        @jakarta.persistence.UniqueConstraint(columnNames = {"email"})
-    },
-    indexes = {
-        @jakarta.persistence.Index(name = "idx_author_email", columnList = "email")
-    }
-)
+@Table(name = "AUTHOR_TBL")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@Builder
 public class Author {
 
     @Id
@@ -45,12 +34,6 @@ public class Author {
     
     @Column(nullable = false)
     private int age;
-
-    @Column(name = "created_at", updatable = false, nullable = false, columnDefinition = "DATE")
-    private LocalDate createdAt;
-
-    @Column(name = "last_modified", insertable = false, nullable = false, columnDefinition = "TIMESTAMP")
-    private LocalDateTime lastModified;
     
 }
 
