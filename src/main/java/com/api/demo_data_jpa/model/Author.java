@@ -1,10 +1,13 @@
 package com.api.demo_data_jpa.model;
 
+import java.util.List;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,6 +37,11 @@ public class Author {
     
     @Column(nullable = false)
     private int age;
+
+    // Descobrir quem é o dono da relação? O "courses" vai ser o dono da relação e o "authors" vai ser o inverso.
+    // A relação é ManyToMany, então o author pode ter vários cursos e o curso pode ter vários autores.
+    @ManyToMany(mappedBy = "authors")
+    List<Course> courses;
     
 }
 
@@ -116,4 +124,23 @@ public class Author {
  * @JsonCreator: Indica que o método deve ser usado para deserialização JSON.
  * @JsonIgnore: Indica que o campo deve ser ignorado durante a serialização/deserialização JSON.
  * @JsonPropertyOrder: Define a ordem das propriedades na serialização JSON.
+ * @manyToMany: Define uma relação ManyToMany entre entidades.
+ *      - mappedBy: Indica o lado inverso da relação. Vai ser usado na entidade que não é o dono da relação. Vai mapear a coleção de entidades inversas.
+ * @JoinTable: Define a tabela de junção para a relação ManyToMany.
+ *      - name: Nome da tabela de junção.
+ *      - joinColumns: Define as colunas de junção para a entidade atual.
+ *      - inverseJoinColumns: Define as colunas de junção para a entidade inversa.
+ * @JoinColumn: Define uma coluna de junção para a relação.
+ *      - name: Nome da coluna de junção.
+ *      - referencedColumnName: Nome da coluna referenciada na entidade inversa.
+ *      - nullable: Indica se a coluna de junção pode ser nula.
+ *      - unique: Indica se a coluna de junção deve ser única.
+ *      - insertable: Indica se a coluna de junção pode ser incluída em operações de inserção.
+ *      - updatable: Indica se a coluna de junção pode ser atualizada.
+ * @OrderBy: Define a ordem dos resultados para uma coleção.
+ *      - value: Expressão de ordenação (por exemplo, "name ASC").
+ * @OrderColumn: Define a coluna de ordenação para uma coleção.
+ *      - name: Nome da coluna de ordenação.
+ *      - nullable: Indica se a coluna de ordenação pode ser nula.
+ * 
 */
