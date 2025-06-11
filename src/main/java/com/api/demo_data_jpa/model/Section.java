@@ -26,6 +26,7 @@ public class Section {
     @Column(length = 100)
     private String name;
 
-    private int order;
+    @Column(name = "section_order")
+    private int sectionOrder;
     
 }

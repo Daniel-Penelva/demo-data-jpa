@@ -1,5 +1,5 @@
 package com.api.demo_data_jpa.service;
-
+/*
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -50,3 +50,4 @@ public class AuthorLifecycleExample implements CommandLineRunner {
     }
     
 }
+*/
