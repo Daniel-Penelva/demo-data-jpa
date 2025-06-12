@@ -150,7 +150,7 @@ Agora sim, `Resource` conhece `Lecture` e o JPA consegue fazer a associação em
 
 ---
 
-# Relacioanmento Unidirecional de Um-Para-Um (OneToOne)
+# Relacionamento Unidirecional de Um-Para-Um (OneToOne)
 
 Uma **relação unidirecional** significa que **apenas uma entidade conhece a outra**.
 Ou seja, só um lado tem uma referência para o outro.
@@ -348,7 +348,7 @@ Tudo funciona sem precisar de uma segunda chave estrangeira, porque o JPA cuida 
 ---
 
 ### 🔍 Exemplo:
-
+#### `Section` (lado **dono** da relação):
 ```java
 // Dono da relação Section (único lado) - A classe que possuir a anotação `@JoinColumn`
 @Entity
@@ -364,6 +364,7 @@ public class Section {
 }
 ```
 
+#### `Course` (lado **inverso** da relação):
 ```java
 // Inverso da relação Course (lado invserso) - A classe que possuir a propriedade mappedBy
 @Entity
@@ -443,6 +444,7 @@ Suponha:
 * Um `Curso` pode ter vários `Autores`
 * Um `Autor` pode estar em vários `Cursos`
 
+#### `Course` (lado **dono** da relação):
 ```java
 // 🔸 Dono da relação Course (único lado) - A classe que possuir a anotação `@JoinTable`
 @Entity
@@ -469,6 +471,8 @@ public class Course {
 
   - ✅ Define os nomes das colunas de chave estrangeira
 
+
+#### `Author` (lado **inverso** da relação):
 ```java
 // 🔹 Inverso da relação Author (lado inverso) - A classe que possui mappedBy
 @Entity
@@ -508,4 +512,326 @@ public class Author {
   * A entidade com mappedBy é sempre o lado inverso.
 
 > 🧭 **Dica**: escolha como "dono" o lado que **geralmente manipula** mais (quem inicia a criação da relação).
+
+---
+---
+
+## 🧩 O que é `@OnDelete`?
+
+A anotação `@OnDelete` é do **Hibernate** (não do JPA puro) e serve para delegar a **remoção em cascata ao banco de dados** por meio de `ON DELETE CASCADE`, em vez de o Hibernate fazer isso em memória com `orphanRemoval` ou `cascade`.
+
+---
+
+### 🔧 Sintaxe Básica
+
+```java
+@OnDelete(action = OnDeleteAction.CASCADE)
+```
+
+* Isso significa que, quando a **entidade pai for deletada**, o banco **automaticamente remove as entidades filhas** (em vez de Hibernate fazer isso com várias `DELETE` individuais).
+
+---
+
+## ✅ Análise Entidade por Entidade
+
+### 🔹 `Course` → `Section` (OneToMany)
+#### ✅ Entidade Course
+```java
+public class Course {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToMany(mappedBy = "course")
+    List<Section> sections;
+}
+```
+#### ✅ Entidade Section
+```java
+public class Section {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToOne
+    @JoinColumn(name = "course_id", foreignKey = @ForeignKey(name = "fk_section_course_id"))
+    private Course course;
+}
+```
+
+📌 **Solução recomendada:**
+
+```java
+public class Section {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToOne
+    @JoinColumn(name = "course_id", foreignKey = @ForeignKey(name = "fk_section_course_id"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Course course;
+}
+```
+
+  ✔️ Ao deletar um `Course`, todas as `Sections` associadas serão removidas automaticamente.
+
+  ✔️ Para usar `@OnDelete` é preciso adicioná-la no lado `@ManyToOne`, ou seja, em `Section`.
+
+  ✔️ O `@OnDelete` precisa estar no lado que tem a `@JoinColumn` (ou seja, `@ManyToOne` ou `@OneToOne` dono).
+
+  ✔️ Agora, **quando um `Course` for deletado**, o banco de dados automaticamente deletará as `Sections` relacionadas, sem precisar carregar os objetos na memória.
+
+---
+
+### 🔹 `Section` → `Lecture` (OneToMany)
+#### ✅ Entidade Section
+```java
+public class Section {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToMany(mappedBy = "section")
+    private List<Lecture> lectures;
+}
+```
+#### ✅ Entidade Lecture
+```java
+public class Lecture {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToOne
+    @JoinColumn(name = "section_id", foreignKey = @ForeignKey(name = "fk_lecture_section_id"))
+    private Section section;
+}
+```
+
+📌 **Solução recomendada:**
+
+```java
+public class Lecture {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToOne
+    @JoinColumn(name = "section_id", foreignKey = @ForeignKey(name = "fk_lecture_section_id"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Section section;
+}
+```
+
+  ✔️ Ao deletar uma `Section`, todas as `Lectures` serão deletadas também.
+  
+  ✔️ O `@OnDelete` precisa estar no lado que tem a `@JoinColumn` (ou seja, `@ManyToOne` ou `@OneToOne` dono).
+
+---
+
+### 🔹 `Lecture` → `Resource` (OneToOne)
+#### ✅ Entidade Lecture
+```java
+public class Lecture {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToOne
+    @JoinColumn(name = "resource_id", foreignKey = @ForeignKey(name = "fk_lecture_resource_id"))
+    private Resource resource;
+}
+```
+
+#### ✅ Entidade Resource
+```java
+public class Resource {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToOne(mappedBy = "resource")
+    private Lecture lecture;
+}
+```
+
+📌 **Situação especial:**
+
+* `Lecture` é o **dono** da relação.
+* Ao deletar uma `Lecture`, pode-se desejar que o `Resource` seja deletado também.
+* Porém: ⚠️ isso **só faz sentido se o `Resource` não for compartilhado** com outras entidades.
+
+📌 **Solução recomendada (se Resource for exclusivo da Lecture):**
+
+```java
+public class Lecture {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToOne
+    @JoinColumn(name = "resource_id", foreignKey = @ForeignKey(name = "fk_lecture_resource_id"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    private Resource resource;
+}
+```
+  ✔️ O `@OnDelete` precisa estar no lado que tem a `@JoinColumn` (ou seja, `@ManyToOne` ou `@OneToOne` dono).
+
+---
+
+### 🔹 `Course` ↔ `Author` (ManyToMany)
+#### ✅ Entidade Course
+```java
+public class Course {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToMany
+    @JoinTable(
+        name = "courses_authors",
+        joinColumns = { @JoinColumn(name = "course_id") },
+        inverseJoinColumns = { @JoinColumn(name = "author_id") }
+    )
+    List<Author> authors;
+}
+```
+
+#### ✅ Entidade Author
+```java
+public class Author {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToMany(mappedBy = "authors")
+    List<Course> courses;
+}
+```
+
+📌 **Solução recomendada:**
+
+```java
+public class Course {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+    
+    @ManyToMany
+    @JoinTable(
+        name = "courses_authors",
+        joinColumns = { @JoinColumn(name = "course_id") },
+        inverseJoinColumns = { @JoinColumn(name = "author_id") }
+    )
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    List<Author> authors;
+}
+```
+
+✔️ Ao deletar um `Course`, os registros da tabela de junção `courses_authors` serão removidos automaticamente.
+
+✔️ Isso garante que **ao deletar um `Course`, os registros da tabela `courses_authors` relacionados também serão removidos automaticamente**.
+
+⚠️ *Isso **não deleta os autores** do banco, apenas a **associação entre eles e os cursos**.*
+
+---
+
+## ❌ Onde **não** usar `@OnDelete`
+
+### ⛔ Em listas do lado `@OneToMany` (como `sections`, `lectures`)
+
+Esses lados são **mapeados inversamente**. O `@OnDelete` precisa estar no lado que tem a `@JoinColumn` (ou seja, `@ManyToOne` ou `@OneToOne` dono).
+
+---
+
+## ✅ Resumo Final com Sugestões
+
+| Entidade  | Campo                     | Aplicar `@OnDelete`? | Justificativa                                                |
+| --------- | ------------------------- | -------------------- | ------------------------------------------------------------ |
+| `Section` | `course`                  | ✅ Sim                | Deletar Course → deleta Sections                             |
+| `Lecture` | `section`                 | ✅ Sim                | Deletar Section → deleta Lectures                            |
+| `Lecture` | `resource`                | ✅ Se exclusivo       | Deletar Lecture → deleta Resource (se não for compartilhado) |
+| `Course`  | `authors` (`@ManyToMany`) | ✅ Sim                | Deletar Course → remove vínculos na tabela `courses_authors` |
+
+---
+
+## 🧪 Resumo Prático para as entidades
+
+| Relacionamento             | Onde aplicar `@OnDelete`                   | Resultado                                                         |
+| -------------------------- | ------------------------------------------ | ----------------------------------------------------------------- |
+| `Course` → `Section`       | Em `Section.course`                        | Ao deletar um Course, as Sections são removidas                   |
+| `Section` → `Lecture`      | Em `Lecture.section`                       | Ao deletar uma Section, as Lectures são removidas                 |
+| `Lecture` → `Resource`     | Em `Lecture.resource`                      | Ao deletar uma Lecture, o Resource pode ser removido              |
+| `Course` → `Author` (join) | Em `@ManyToMany` do Course com `@OnDelete` | Ao deletar um Course, as linhas da tabela de junção são removidas |
+
+---
+
+## ✅ Onde o `@OnDelete` pode ser usado?
+
+| Situação      | Pode usar `@OnDelete`?                                                 |
+| ------------- | ---------------------------------------------------------------------- |
+| `@OneToMany`  | ❌ **Não diretamente** (precisa ser na entidade filha, no `@ManyToOne`) |
+| `@ManyToOne`  | ✅ Sim                                                                  |
+| `@OneToOne`   | ✅ Sim (lado dono)                                                      |
+| `@ManyToMany` | ✅ Sim (na `@JoinTable`)                                                |
+
+---
+
+## 🚫 Cuidados com `@OnDelete`
+
+* Ele depende do **banco de dados suportar `ON DELETE CASCADE`**.
+* Só funciona com **Hibernate** (não é JPA padrão).
+* Se você deletar via JPA e quiser que o Hibernate cuide disso com cascata em memória, você usaria `cascade = CascadeType.REMOVE`.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

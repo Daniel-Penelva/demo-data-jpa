@@ -2,6 +2,9 @@ package com.api.demo_data_jpa.model;
 
 import java.util.List;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -41,12 +44,14 @@ public class Course {
     // A coluna "course_id" é a chave estrangeira que referencia a tabela de cursos e a coluna "author_id" é a chave estrangeira que referencia a tabela de autores.
     // A relação é ManyToMany, então o curso pode ter vários autores e o autor pode ter vários cursos.
     // Como se lê: Um curso pode ter vários autores.
+    // Quando um curso for deletado, todos os autores associados a ele também serão deletados.
     @ManyToMany
     @JoinTable(
         name = "courses_authors",
         joinColumns = { @JoinColumn(name = "course_id") },
         inverseJoinColumns = { @JoinColumn(name = "author_id") }
     )
+    @OnDelete(action = OnDeleteAction.CASCADE) 
     List<Author> authors;
 
     // Bom Saber: A classe que possuir @JoinColumn é o lado dono (Section). A classe que possuir o mappedBy é o lado inverso (Course).
@@ -88,6 +93,11 @@ public class Course {
  *      - insertable: Indica se a coluna de junção pode ser incluída em operações de inserção.
  *      - updatable: Indica se a coluna de junção pode ser atualizada.
  *      - foreignKey: Define a chave estrangeira para a coluna de junção.
+ * 
+ * @OnDelete: Define o comportamento de exclusão em cascata para a relação. Quando uma entidade é deletada, as entidades relacionadas também serão deletadas.
+ *      - action: Define a ação a ser executada quando a entidade principal for deletada (ex: CASCADE, SET_NULL, etc.).
+ *      - CASCADE: Quando a entidade principal for deletada, todas as entidades relacionadas também serão deletadas.
+ *      - SET_NULL: Quando a entidade principal for deletada, a relação será nula.
  * 
 */
 

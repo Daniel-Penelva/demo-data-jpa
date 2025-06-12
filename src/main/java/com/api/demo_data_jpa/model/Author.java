@@ -165,6 +165,11 @@ public class Author {
  * @JoinColumn: Especifica a coluna que será usada como chave estrangeira na tabela da entidade que possui a relação.
  * @ForeignKey: Define a chave estrangeira com um nome específico, que pode ser útil para manter a integridade referencial no banco de dados.
  * 
+ * @OnDelete: Define o comportamento de exclusão em cascata para a relação. Quando uma entidade é deletada, as entidades relacionadas também serão deletadas.
+ *      - action: Define a ação a ser executada quando a entidade principal for deletada (ex: CASCADE, SET_NULL, etc.).
+ *      - CASCADE: Quando a entidade principal for deletada, todas as entidades relacionadas também serão deletadas.
+ *      - SET_NULL: Quando a entidade principal for deletada, a relação será nula.
+ * 
 */
 
 /* Observação: 

@@ -1,5 +1,8 @@
 package com.api.demo_data_jpa.model;
 
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.ForeignKey;
@@ -37,8 +40,10 @@ public class Lecture {
     // O foreignKey é usado para definir a chave estrangeira com um nome específico.
     // A relação é ManyToOne, então várias palestras podem pertencer a uma única seção, mas cada palestra pertence a uma única seção.
     // Como se lê: Várias palestras podem pertencer a uma única seção, mas cada palestra pertence a uma única seção.
+    // Quando uma seção for deletada, todas as palestras associadas a ela também serão deletadas.
     @ManyToOne
     @JoinColumn(name = "section_id", foreignKey = @ForeignKey(name = "fk_lecture_section_id"))
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private Section section;
 
     // É uma relação UNIDIRECIONAL OneToOne entre Lecture e Resource - para ser unidirecional não usa a propriedade mappedBy - aqui, para acessar o Resource, você precisa acessar a Lecture.
@@ -49,8 +54,10 @@ public class Lecture {
     // O foreignKey é usado para definir a chave estrangeira com um nome específico.
     // A relação é OneToOne, então uma palestra pode ter um único recurso, e um recurso pode pertencer a uma única palestra.
     // Como se lê: Uma palestra pode ter um único recurso, e um recurso pode pertencer a uma única palestra.
+    // Quando uma palestra for deletada, o recurso associado a ela também será deletado.
     @OneToOne
     @JoinColumn(name = "resource_id", foreignKey = @ForeignKey(name = "fk_lecture_resource_id"))
+    @OnDelete(action = OnDeleteAction.CASCADE) 
     private Resource resource;
     
 }
@@ -61,6 +68,11 @@ public class Lecture {
  * @ForeignKey: Define a chave estrangeira com um nome específico, que pode ser útil para manter a integridade referencial no banco de dados.
  * 
  * Para ser uma relação unidirecional, a entidade principal não deve ter a relação mappedBy, e a entidade dependente deve ter a anotação @JoinColumn para especificar a coluna de junção.
+ * 
+ * @OnDelete: Define o comportamento de exclusão em cascata para a relação. Quando uma entidade é deletada, as entidades relacionadas também serão deletadas.
+ *      - action: Define a ação a ser executada quando a entidade principal for deletada (ex: CASCADE, SET_NULL, etc.).
+ *      - CASCADE: Quando a entidade principal for deletada, todas as entidades relacionadas também serão deletadas.
+ *      - SET_NULL: Quando a entidade principal for deletada, a relação será nula.
 */
 
 /* Observação: 
