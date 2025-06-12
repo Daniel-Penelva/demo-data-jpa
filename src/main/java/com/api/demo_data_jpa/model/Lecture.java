@@ -30,8 +30,8 @@ public class Lecture {
     @Column(length = 100)
     private String name;
 
-    // O "Many" representa a entidade dependente (Lecture) e o "One" representa a entidade principal (Section).
-    // A seção é o dono da relação, pois ela tem a anotação @OneToMany(mappedBy = "section") na classe Section.
+    // Bom Saber: A classe que possuir @JoinColumn é o lado dono (Lecture). A classe que possuir o mappedBy é o lado inverso (Resource).
+    // O Lecture é o relacionamento principal, é o lado do dono da relação e o Section é o lado dependente da relação.
     // A anotação @JoinColumn é usada para especificar a coluna que será usada como chave estrangeira na tabela de palestras.
     // A coluna "section_id" é a chave estrangeira que referencia a tabela de seções.
     // O foreignKey é usado para definir a chave estrangeira com um nome específico.
@@ -42,8 +42,8 @@ public class Lecture {
     private Section section;
 
     // É uma relação UNIDIRECIONAL OneToOne entre Lecture e Resource - para ser unidirecional não usa a propriedade mappedBy - aqui, para acessar o Resource, você precisa acessar a Lecture.
-    // O "One" representa a entidade principal (Resource) e "One" representa a entidade dependente (Lecture).
-    // O recurso (Resource) é o dono da relação, pois ela tem a anotação @OneToOne na classe Palestra (Lecture).
+    // Bom Saber: A classe que possuir @JoinColumn é o lado dono (Lecture). A classe que possuir o mappedBy é o lado inverso (Resource).
+    // O Lecture é o relacionamento principal, é o lado do dono da relação e o Resource é o lado dependente da relação.
     // A anotação @JoinColumn é usada para especificar a coluna que será usada como chave estrangeira na tabela de recursos.
     // A coluna "resource_id" é a chave estrangeira que referencia a tabela de recursos.
     // O foreignKey é usado para definir a chave estrangeira com um nome específico.
@@ -62,3 +62,10 @@ public class Lecture {
  * 
  * Para ser uma relação unidirecional, a entidade principal não deve ter a relação mappedBy, e a entidade dependente deve ter a anotação @JoinColumn para especificar a coluna de junção.
 */
+
+/* Observação: 
+ *
+ * Vale para todos os relacionamentos: 
+ *  - A classe que possuir @JoinColumn e @JoinTable é o lado dono. 
+ *  - A classe que possuir o mappedBy é o lado inverso.
+ * */  

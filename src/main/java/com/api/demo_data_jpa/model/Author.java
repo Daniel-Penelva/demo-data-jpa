@@ -38,8 +38,10 @@ public class Author {
     @Column(nullable = false)
     private int age;
 
-    // Descobrir quem é o dono da relação? O "courses" vai ser o dono da relação e o "authors" vai ser o inverso.
+    // Bom Saber: A classe que possuir @JoinColumn e @JoinTable é o lado dono (Course). A classe que possuir o mappedBy é o lado inverso (Author).
+    // O Course é o relacionamento principal, é o lado do dono da relação e o Author é o lado dependente da relação.
     // A relação é ManyToMany, então o author pode ter vários cursos e o curso pode ter vários autores.
+    // Como se lê: Vários autores podem ter vários cursos.
     @ManyToMany(mappedBy = "authors")
     List<Course> courses;
     
@@ -164,3 +166,10 @@ public class Author {
  * @ForeignKey: Define a chave estrangeira com um nome específico, que pode ser útil para manter a integridade referencial no banco de dados.
  * 
 */
+
+/* Observação: 
+ *
+ * Vale para todos os relacionamentos: 
+ *  - A classe que possuir @JoinColumn e @JoinTable é o lado dono. 
+ *  - A classe que possuir o mappedBy é o lado inverso.
+ * */  

@@ -31,12 +31,19 @@ public class Resource {
     private String url;
 
     // É uma relação BIDIRECIONAL OneToOne entre Resource e Lecture - para ser bidirecional usa a propriedade mappedBy na classe Lecture. Aqui, para acessar a Lecture, você pode acessar o Resource diretamente através da propriedade lecture ou acessar a Lecture através do Resource, pois a relação é bidirecional. 
-    // O "One" representa a entidade principal (Resource) e "One" representa a entidade dependente (Lecture).
-    // O recurso (Resource) é o dono da relação, pois ela tem a anotação @OneToOne na classe Palestra (Lecture).
-    // mappedBy = "resource" indica que a propriedade resource na classe Lecture é responsável por mapear essa relação.
+    // Bom Saber: A classe que possuir @JoinColumn é o lado dono (Lecture). A classe que possuir o mappedBy é o lado inverso (Resource).
+    // Lecture é o relacionamento principal, é o lado do dono da relação e o Resource é o lado inverso da relação.
+    // mappedBy = "resource" aqui, o Resource apenas aponta para o campo resource da entidade Lecture, apenas para mapear a relação.
     // A relação é OneToOne, então um recurso pode pertencer a uma única palestra, e uma palestra pode ter um único recurso.
     // Como se lê: Um recurso pode pertencer a uma única palestra, e uma palestra pode ter um único recurso.
     @OneToOne(mappedBy = "resource")
     private Lecture lecture;
     
 }
+
+/* Observação: 
+ *
+ * Vale para todos os relacionamentos: 
+ *  - A classe que possuir @JoinColumn e @JoinTable é o lado dono. 
+ *  - A classe que possuir o mappedBy é o lado inverso.
+ * */  
