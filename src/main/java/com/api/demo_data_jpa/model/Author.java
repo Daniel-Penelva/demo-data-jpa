@@ -124,6 +124,7 @@ public class Author {
  * @JsonCreator: Indica que o método deve ser usado para deserialização JSON.
  * @JsonIgnore: Indica que o campo deve ser ignorado durante a serialização/deserialização JSON.
  * @JsonPropertyOrder: Define a ordem das propriedades na serialização JSON.
+ * 
  * @manyToMany: Define uma relação ManyToMany entre entidades.
  *      - mappedBy: Indica o lado inverso da relação. Vai ser usado na entidade que não é o dono da relação. Vai mapear a coleção de entidades inversas.
  * @JoinTable: Define a tabela de junção para a relação ManyToMany.
@@ -137,10 +138,25 @@ public class Author {
  *      - unique: Indica se a coluna de junção deve ser única.
  *      - insertable: Indica se a coluna de junção pode ser incluída em operações de inserção.
  *      - updatable: Indica se a coluna de junção pode ser atualizada.
+ *      - foreignKey: Define a chave estrangeira para a coluna de junção.
  * @OrderBy: Define a ordem dos resultados para uma coleção.
  *      - value: Expressão de ordenação (por exemplo, "name ASC").
  * @OrderColumn: Define a coluna de ordenação para uma coleção.
  *      - name: Nome da coluna de ordenação.
  *      - nullable: Indica se a coluna de ordenação pode ser nula.
+ * 
+ * @OneToMany: Define uma relação OneToMany entre entidades. O "One" representa a entidade principal (One) e o "Many" representa a entidade dependente (Many).
+ *      - mappedBy: Indica o lado inverso da relação. Vai ser usado na entidade que não é o dono da relação. Vai mapear a coleção de entidades inversas.
+ * @ManyToOne: Define uma relação ManyToOne entre entidades. O "One" representa a entidade principal (One) e o "Many" representa a entidade dependente (Many).
+ *      - fetch: Define o tipo de carregamento da relação (EAGER ou LAZY).
+ *      - optional: Indica se a relação é opcional (pode ser nula).
+ * @JoinColumn: Define uma coluna de junção para a relação.
+ *      - name: Nome da coluna de junção.
+ *      - referencedColumnName: Nome da coluna referenciada na entidade inversa.
+ *      - nullable: Indica se a coluna de junção pode ser nula.
+ *      - unique: Indica se a coluna de junção deve ser única.
+ *      - insertable: Indica se a coluna de junção pode ser incluída em operações de inserção.
+ *      - updatable: Indica se a coluna de junção pode ser atualizada.
+ *      - foreignKey: Define a chave estrangeira para a coluna de junção.
  * 
 */

@@ -6,7 +6,7 @@ import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.context.annotation.Bean;
+//import org.springframework.context.annotation.Bean;
 
 import com.api.demo_data_jpa.model.Author;
 import com.api.demo_data_jpa.repository.AuthorRepository;
@@ -18,7 +18,7 @@ public class DemoDataJpaApplication {
 		SpringApplication.run(DemoDataJpaApplication.class, args);
 	}
 
-	@Bean
+	//@Bean
 	public CommandLineRunner commandLineRunner(AuthorRepository authorRepository) {
 		return args -> {
 			var author1 = Author.builder()
