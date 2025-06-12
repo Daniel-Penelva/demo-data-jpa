@@ -72,6 +72,10 @@ public class Section {
  *      - insertable: Indica se a coluna de junção pode ser incluída em operações de inserção.
  *      - updatable: Indica se a coluna de junção pode ser atualizada.
  *      - foreignKey: Define a chave estrangeira para a coluna de junção.
+ * 
+ * @OneToOne: Define uma relação unidirecional ou bidirecional (utiliza o mappedBy) OneToOne entre duas entidades, onde uma entidade possui exatamente uma instância da outra.
+ * @JoinColumn: Especifica a coluna que será usada como chave estrangeira na tabela da entidade que possui a relação.
+ * @ForeignKey: Define a chave estrangeira com um nome específico, que pode ser útil para manter a integridade referencial no banco de dados.
 */
 
 /* Observação: 
