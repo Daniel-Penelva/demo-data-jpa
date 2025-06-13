@@ -3,6 +3,7 @@ package com.api.demo_data_jpa.model;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -30,9 +31,11 @@ public class Author {
     private Integer id;
 
     @Column(name = "first_name", nullable = false, length = 35)
+    @JsonProperty("first_name")
     private String firstName;
 
     @Column(name = "last_name", nullable = false, length = 50)
+    @JsonProperty("last_name")
     private String lastName;
     
     @Column(nullable = false, unique = true, length = 100)

@@ -965,7 +965,7 @@ private List<Author> authors;
 | **Responsável pela persistência** | Course (dono)                             | Author (inverso)                        |
 
 ---
-## 🔹2. `Course` ↔ `Section` (OneToMany + ManyToOne)
+## 🔹2. `Course` → `Section` (OneToMany + ManyToOne)
 ### ✅ **`Course`**
 
 ```java
@@ -1055,7 +1055,7 @@ private List<Section> sections;
 
 ---
 
-## 🔹3. `Lecture` ↔ `Section` (OneToMany + ManyToOne)
+## 🔹3. `Lecture` → `Section` (OneToMany + ManyToOne)
 ### ✅ **`Lecture`**
 ```java
 public class Lecture {
@@ -1087,7 +1087,7 @@ public class Section {
 ```
 
 ---
-## 🔹3. `Lecture` ↔ `Resource` (OneToOne)
+## 🔹3. `Lecture` → `Resource` (OneToOne)
 ### ✅ **`Lecture`**
 
 ```java
@@ -1171,11 +1171,197 @@ Assim:
 ✅ `optional = false` → garante integridade (chave estrangeira obrigatória).
 ✅ `@JsonIgnore` → evita problemas de loops infinitos no JSON e lazy-loading que explode no Jackson.
 
+---
+---
+
+## ✅ **1️⃣ O que é o `@JsonProperty`?**
+
+* É uma anotação do Jackson (mesmo pacote do `@JsonIgnore`).
+* **Serve para personalizar o nome de uma propriedade no JSON** ou garantir que ela seja incluída mesmo que a convenção de nome do Java seja diferente.
+* Também pode ser usada em métodos `getter` e `setter` para forçar Jackson a serializar/desserializar mesmo quando não é automático.
+
+**Exemplo:**
+
+```java
+public class Author {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(name = "first_name", nullable = false, length = 35)
+    @JsonProperty("first_name")
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    @JsonProperty("last_name")
+    private String lastName;
+}
+```
+
+➡️ Isso faz com que no JSON apareça como:
+
+```json
+{
+  "first_name": "Daniel",
+  "last_name": "Penelva"
+}
+```
+
+mesmo que no Java o nome seja `firstName`.
+
+
+## ✅ **2️⃣ Quando usar `@JsonProperty` faz sentido**
+
+| Uso                                                         | Para quê?                                                                        |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| ✅ **Renomear campos**                                       | Para seguir convenções de API (snake\_case, camelCase) sem mudar o nome no Java. |
+| ✅ **Forçar inclusão/exclusão em getters/setters especiais** | Útil quando Jackson não consegue detectar automaticamente.                       |
+| ✅ **Configurar ordem ou valor default**                     | Em casos mais avançados com serialização customizada.                            |
 
 
 
+## ✅ **3️⃣ Diferença para `@JsonIgnore`**
+
+| Anotação            | O que faz                                                      |
+| ------------------- | -------------------------------------------------------------- |
+| **`@JsonProperty`** | Diz: **“Inclua este campo no JSON, e chame ele assim”**        |
+| **`@JsonIgnore`**   | Diz: **“Ignore este campo — não serialize e não deserialize”** |
 
 
+
+## ✅ **4️⃣ Vale a pena usar `@JsonProperty`?**
+
+Depende:
+
+* 👉 Se **só quer evitar loop** de serialização, **`@JsonIgnore` é o suficiente e mais simples**.
+* 👉 Se quer **API com nomes bonitos no JSON** (por exemplo `first_name` em vez de `firstName`), aí `@JsonProperty` é ótimo.
+* 👉 Se usa `snake_case` no JSON mas camelCase no Java, é uma boa prática padronizar com `@JsonProperty`.
+
+
+## 🎓 **Resumo**
+
+✅ Use **`@JsonIgnore`**:
+
+* Para **quebrar loops**
+* Para **não expor informações sensíveis**
+* Para **ocultar campos técnicos**
+
+✅ Use **`@JsonProperty`**:
+
+* Para **dar nomes mais amigáveis ou formatados**
+* Para **ajustar a forma que o JSON é exposto**
+
+
+## 🚀 **Dica final**
+
+**Combinar os dois é comum**:
+
+* `@JsonIgnore` em relações bidirecionais ou sensíveis.
+* `@JsonProperty` em campos de valor (strings, números) para formatar o nome no JSON.
+
+
+## 🎯 **Exemplo Prático**
+
+Detalhando com um exemplo prático para fixar:
+
+
+## ✅ **1️⃣ No backend (Java)**
+
+```java
+@Entity
+public class Author {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @JsonProperty("first_name") // 👉 isso força o JSON a usar snake_case
+    private String firstName;
+
+    @JsonProperty("last_name")
+    private String lastName;
+
+    // getters e setters
+}
+```
+
+Quando expõe esse Author numa API REST (ex: `/api/authors`), o JSON retornado será:
+
+```json
+{
+  "id": 1,
+  "first_name": "Daniel",
+  "last_name": "Andrade"
+}
+```
+
+## ✅ **2️⃣ No frontend (Angular) ou no Postman**
+
+No Angular, se criar uma **interface** para esse modelo, **tem que seguir o mesmo nome do JSON**, porque o Angular vai fazer o `HttpClient` mapear **diretamente do JSON para o objeto**.
+
+### **Correto:** no Angular, a interface deve ser assim:
+
+```ts
+export interface Author {
+  id: number;
+  first_name: string; // 👈 igual ao JSON!
+  last_name: string;  // 👈 igual ao JSON!
+}
+```
+### **Correto** no Postman, o JSON deve ser assim:
+✅ No Postman (ou qualquer cliente HTTP), para criar ou atualizar um Author você deve enviar o corpo assim:
+
+```json
+{
+  "first_name": "Daniel",
+  "last_name": "Andrade",
+  "email": "daniel@email.com",
+  "age": 30
+}
+```
+
+📌 Se você mandar com firstName (camelCase), o Spring vai ignorar ou pode não mapear corretamente — porque o Jackson (biblioteca de serialização) casa o nome do JSON com o nome especificado no @JsonProperty.
+
+## ✅ **3️⃣ Se usar camelCase no Angular e snake\_case no JSON**
+
+Nesse caso, se o JSON for `first_name` mas se quiser `firstName` na interface, aí tem que fazer o mapeamento manual — por exemplo, usando um método de transformação no serviço Angular.
+
+Exemplo:
+
+```ts
+// JSON vem assim: { "first_name": "Daniel" }
+// Você quer: { firstName: "Daniel" }
+
+export interface Author {
+  id: number;
+  firstName: string;
+  lastName: string;
+}
+
+getAuthors(): Observable<Author[]> {
+  return this.http.get<any[]>('/api/authors').pipe(
+    map(authors => authors.map(a => ({
+      id: a.id,
+      firstName: a.first_name,
+      lastName: a.last_name
+    })))
+  );
+}
+```
+
+## ✅ **4️⃣ Dica**
+
+➡️ **Se não quer complicar o front-end**, o mais comum é:
+
+* usar camelCase **tanto no backend quanto no frontend**
+* assim, não precisa de `@JsonProperty` — Jackson já usa os nomes da propriedade Java como estão.
+
+## 🚀 **Resumo**
+
+✅ `@JsonProperty("first_name")` força o nome no JSON.
+✅ O **nome do JSON = nome na interface** para funcionar direto sem mapeamento.
+✅ Se quiser camelCase no front e snake\_case no JSON, tem que mapear manualmente.
 
 
 
