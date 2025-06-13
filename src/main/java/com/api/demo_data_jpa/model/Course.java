@@ -5,8 +5,11 @@ import java.util.List;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -45,13 +48,14 @@ public class Course {
     // A relação é ManyToMany, então o curso pode ter vários autores e o autor pode ter vários cursos.
     // Como se lê: Um curso pode ter vários autores.
     // Quando um curso for deletado, todos os autores associados a ele também serão deletados.
-    @ManyToMany
+    @ManyToMany(fetch = FetchType.LAZY) // O fetch é lazy, ou seja, os dados são carregados somente quando necessário.
     @JoinTable(
         name = "courses_authors",
         joinColumns = { @JoinColumn(name = "course_id") },
         inverseJoinColumns = { @JoinColumn(name = "author_id") }
     )
-    @OnDelete(action = OnDeleteAction.CASCADE) 
+    @OnDelete(action = OnDeleteAction.CASCADE)
+    @JsonIgnore 
     List<Author> authors;
 
     // Bom Saber: A classe que possuir @JoinColumn é o lado dono (Section). A classe que possuir o mappedBy é o lado inverso (Course).
@@ -59,7 +63,8 @@ public class Course {
     // mappedBy = "course" aqui, o Course apenas aponta para o campo course da entidade Section, apenas para mapear a relação.
     // A relação é OneToMany, então o curso pode ter várias seções, mas cada seção pertence a um único curso.
     // Como se lê: Um curso pode ter várias seções, mas cada seção pertence a um único curso.
-    @OneToMany(mappedBy = "course")
+    @OneToMany(mappedBy = "course", fetch = FetchType.LAZY)
+    @JsonIgnore
     List<Section> sections;
     
 }
@@ -98,6 +103,12 @@ public class Course {
  *      - action: Define a ação a ser executada quando a entidade principal for deletada (ex: CASCADE, SET_NULL, etc.).
  *      - CASCADE: Quando a entidade principal for deletada, todas as entidades relacionadas também serão deletadas.
  *      - SET_NULL: Quando a entidade principal for deletada, a relação será nula.
+ * 
+ * fetch = FetchType.LAZY: Define o tipo de carregamento da relação. O LAZY significa que os dados serão carregados somente quando necessário, ou seja, quando a coleção for acessada.
+ * fetch = FetchType.EAGER: Define o tipo de carregamento da relação. O EAGER significa que os dados serão carregados imediatamente, ou seja, quando a entidade for carregada, as coleções relacionadas também serão carregadas.
+ * @JsonIgnore: Anotação do Jackson que indica que o campo deve ser ignorado durante a serialização e desserialização JSON. Isso é útil para evitar loops infinitos em relações bidirecionais.
+ * @JsonProperty: Anotação do Jackson que indica que o campo deve ser serializado e desserializado com um nome específico no JSON. Isso é útil para personalizar o nome do campo no JSON.
+ * optional = false: Indica que a relação é obrigatória, ou seja, não pode ser nula. (chave estrangeira obrigatória)
  * 
 */
 

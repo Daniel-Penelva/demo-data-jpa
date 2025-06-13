@@ -1,7 +1,10 @@
 package com.api.demo_data_jpa.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -36,7 +39,8 @@ public class Resource {
     // mappedBy = "resource" aqui, o Resource apenas aponta para o campo resource da entidade Lecture, apenas para mapear a relação.
     // A relação é OneToOne, então um recurso pode pertencer a uma única palestra, e uma palestra pode ter um único recurso.
     // Como se lê: Um recurso pode pertencer a uma única palestra, e uma palestra pode ter um único recurso.
-    @OneToOne(mappedBy = "resource")
+    @OneToOne(mappedBy = "resource", fetch = FetchType.LAZY)
+    @JsonIgnore
     private Lecture lecture;
     
 }

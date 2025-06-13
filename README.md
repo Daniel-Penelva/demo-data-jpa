@@ -796,6 +796,380 @@ Esses lados são **mapeados inversamente**. O `@OnDelete` precisa estar no lado 
 * Só funciona com **Hibernate** (não é JPA padrão).
 * Se você deletar via JPA e quiser que o Hibernate cuide disso com cascata em memória, você usaria `cascade = CascadeType.REMOVE`.
 
+---
+---
+
+## 🚀 **1️⃣ `fetch = FetchType.LAZY`**
+
+### 👉 O que é?
+
+* O `fetch` controla **como o JPA/Hibernate carrega relacionamentos entre entidades**:
+
+  * `LAZY` → Carrega **sob demanda** (só quando acessar o atributo).
+  * `EAGER` → Carrega **imediatamente**, junto com a entidade principal.
+
+✅ **Boas práticas:**
+
+* Para `@OneToMany` e `@ManyToOne`: quase sempre preferível `LAZY` para performance (evita joins enormes).
+* `@ManyToOne` é `EAGER` por padrão → portanto é comum mudar explicitamente para `LAZY`.
+
+---
+
+## 🚀 **2️⃣ `optional = false`**
+
+### 👉 O que é?
+
+* Usado em `@ManyToOne` ou `@OneToOne`.
+* Diz que o relacionamento **não pode ser `null`** → ou seja, é **obrigatório** no banco de dados e na validação ORM.
+* Cria no DDL: `NOT NULL`.
+
+Exemplo:
+
+```java
+@ManyToOne(fetch = FetchType.LAZY, optional = false)
+```
+
+---
+
+## 🚀 **3️⃣ `@JsonIgnore`**
+
+### 👉 O que é?
+
+* Anotação do **Jackson** (JSON serializer usado pelo Spring Boot).
+* Evita **loops infinitos** de serialização (problema comum com relacionamentos bidirecionais).
+* Garante que campos `LAZY` não explodam quando o Jackson tentar converter para JSON.
+* O seu uso indica que o campo deve ser **ignorado** durante a serialização/deserialização JSON.
+
+---
+
+## ✅ **Aplicando nas ENTIDADES**
+
+## 🔹1. `Course` ↔ `Author` (ManyToMany)
+### ✅ **`Author`**
+
+```java
+public class Author {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToMany(mappedBy = "authors", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Course> courses;
+}
+```
+
+### ✅ **`Course`**
+
+```java
+public class Course {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "courses_authors",
+        joinColumns = { @JoinColumn(name = "course_id") },
+        inverseJoinColumns = { @JoinColumn(name = "author_id") }
+    )
+    @JsonIgnore
+    private List<Author> authors;
+}
+```
+
+## 👉 Dúvida: **Pode usar `fetch = FetchType.LAZY` nos dois lados?**
+
+**SIM!**
+Em um relacionamento `@ManyToMany`, tanto o **lado dono** (`Course` neste caso) quanto o **lado inverso** (`Author`) podem (e normalmente DEVEM) ter `fetch = FetchType.LAZY`.
+
+### Por quê?
+
+* `@ManyToMany` é **EAGER** por padrão no JPA, o que pode gerar **joins gigantescos** e `N+1 selects`.
+* Definindo `LAZY` nos dois lados, você carrega os autores **só quando quiser** (e vice-versa).
+
+Assim:
+
+```java
+@ManyToMany(fetch = FetchType.LAZY)
+```
+
+em ambos os lados = **ótima prática** para performance.
+
+---
+
+## 👉 Dúvida: **Pode usar `@JsonIgnore` nos dois lados?**
+
+**SIM!**
+É **recomendado** para evitar **loop infinito** de serialização JSON:
+
+➡️ Exemplo do problema:
+
+* Você carrega um `Course` → JSON gera todos `Authors` → cada `Author` carrega todos `Courses` → que carregam todos `Authors`... **Loop infinito**!
+
+➡️ Então, usando `@JsonIgnore` em ambos os lados:
+
+```java
+// Classe Author
+@ManyToMany(mappedBy = "authors", fetch = FetchType.LAZY)
+@JsonIgnore
+private List<Course> courses;
+
+// Classe Course
+@ManyToMany(fetch = FetchType.LAZY)
+@JoinTable(
+        name = "courses_authors",
+        joinColumns = { @JoinColumn(name = "course_id") },
+        inverseJoinColumns = { @JoinColumn(name = "author_id") }
+)
+@JsonIgnore
+private List<Author> authors;
+```
+
+✅ Garante:
+
+* Serialização controlada.
+* Lazy não explode exceção.
+* Você decide explicitamente o que expor no JSON usando DTOs ou projeções.
+
+---
+
+## 🔑 **Resumo prático para `@ManyToMany`:**
+
+| Ponto         | Course                   | Author              |
+| ------------- | ------------------------ | ------------------- |
+| `fetch`       | `FetchType.LAZY`         | `FetchType.LAZY`    |
+| `@JsonIgnore` | ✅                        | ✅                   |
+| `JoinTable`   | Somente no lado **dono** | 🚫 (usa `mappedBy`) |
+
+---
+
+## 📌 **Regra de ouro**
+
+* `JoinTable` = só no **lado dono** (nunca nos dois).
+    * Course é o lado dono → define @JoinTable.
+    * Author é o lado inverso → usa mappedBy = "authors".
+* `fetch = LAZY` = melhor prática nos dois lados.
+* `@JsonIgnore` = melhor prática nos dois lados (ou use DTOs).
+
+## ✅ Explicação detalhada
+| Item                              | Course                                    | Author                                  |
+| --------------------------------- | ----------------------------------------- | --------------------------------------- |
+| **Anotação**                      | `@ManyToMany` + `@JoinTable`              | `@ManyToMany(mappedBy = "authors")`     |
+| **`fetch`**                       | `FetchType.LAZY`                          | `FetchType.LAZY`                        |
+| **`@JsonIgnore`**                 | ✅                                         | ✅                                    |
+| **JoinTable**                     | Cria a tabela de junção `courses_authors` | Não cria nada, só mapeia o lado inverso |
+| **Propriedade de ligação**        | `List<Author> authors`                    | `List<Course> courses`                  |
+| **Responsável pela persistência** | Course (dono)                             | Author (inverso)                        |
+
+---
+## 🔹2. `Course` ↔ `Section` (OneToMany + ManyToOne)
+### ✅ **`Course`**
+
+```java
+public class Course {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToMany(mappedBy = "course", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Section> sections;
+}
+```
+
+### ✅ **`Section`**
+
+```java
+public class Section {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "course_id", foreignKey = @ForeignKey(name = "fk_section_course_id"))
+    @JsonIgnore
+    private Course course;
+}
+```
+
+## ✅ **1️⃣ Quem é o lado dono e quem é o inverso?**
+
+* `Section` é o **lado dono** → pois tem `@ManyToOne` com `@JoinColumn` para `Course`.
+* `Course` é o **lado inverso** → pois tem `@OneToMany(mappedBy = "course")`.
+
+## ✅ **2️⃣ Pode usar `fetch = FetchType.LAZY` em ambos?**
+
+👉 **Sim!** E é até recomendado:
+
+| Lado                        | Anotação                                                  | Default | É bom usar `LAZY`?                                                                        |
+| --------------------------- | --------------------------------------------------------- | ------- | ----------------------------------------------------------------------------------------- |
+| `@ManyToOne` (lado dono)    | `@ManyToOne(fetch = FetchType.LAZY)`                      | EAGER   | Sim, melhor trocar para `LAZY` para não carregar o `Course` sempre que pegar um `Section` |
+| `@OneToMany` (lado inverso) | `@OneToMany(mappedBy = "course", fetch = FetchType.LAZY)` | LAZY    | Já é LAZY por padrão, mas deixar explícito é boa prática                                  |
+
+✅ **Resumo**: No `@ManyToOne` **não é LAZY por padrão**, então é interessante colocar `fetch = FetchType.LAZY` explicitamente.
+
+
+## ✅ **3️⃣ Pode usar `@JsonIgnore` em ambos?**
+
+👉 **Sim!** É **altamente recomendado** quando expõe via API, para evitar:
+
+* Recursão infinita (`Course` -> `Section` -> `Course` ...)
+* Respostas JSON gigantes e confusas
+
+Portanto, no `Section` faz:
+
+```java
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "course_id", foreignKey = @ForeignKey(name = "fk_section_course_id"))
+@JsonIgnore
+private Course course;
+```
+
+E no `Course`:
+
+```java
+@OneToMany(mappedBy = "course", fetch = FetchType.LAZY)
+@JsonIgnore
+private List<Section> sections;
+```
+
+## ✅ **4️⃣ Por que é seguro usar `LAZY` + `@JsonIgnore` dos dois lados?**
+
+* `LAZY` → Banco de dados só carrega o que for explicitamente solicitado (eficiência!)
+* `@JsonIgnore` → Evita loops quando converter para JSON na API REST.
+
+## 🎓 **📌 Conclusão**
+
+| Entidade  | Relação                     | `fetch`                                            | `@JsonIgnore` |
+| --------- | --------------------------- | -------------------------------------------------- | ------------- |
+| `Section` | `@ManyToOne` (lado dono)    | **LAZY (colocar explicitamente)**                  | **Sim**       |
+| `Course`  | `@OneToMany` (lado inverso) | **LAZY (já é default, mas pode deixar explícito)** | **Sim**       |
+
+
+✅ **Essa prática vale para praticamente todas as relações bidirecionais quando usa Spring REST + Hibernate.**
+
+---
+
+## 🔹3. `Lecture` ↔ `Section` (OneToMany + ManyToOne)
+### ✅ **`Lecture`**
+```java
+public class Lecture {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "section_id", foreignKey = @ForeignKey(name = "fk_lecture_section_id"))
+    @JsonIgnore
+    private Section section;
+}
+```
+
+### ✅ **`Section`**
+
+```java
+public class Section {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToMany(mappedBy = "section", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Lecture> lectures;
+}
+```
+
+---
+## 🔹3. `Lecture` ↔ `Resource` (OneToOne)
+### ✅ **`Lecture`**
+
+```java
+public class Lecture {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "resource_id", foreignKey = @ForeignKey(name = "fk_lecture_resource_id"))
+    private Resource resource;
+}
+```
+
+### ✅ **`Resource`**
+
+```java
+public class Resource {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @OneToOne(mappedBy = "resource", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Lecture lecture;
+}
+```
+
+## ✅ **1️⃣ Revisão rápida do `OneToOne`**
+
+No caso:
+
+* **`Lecture`** tem `@OneToOne` com `@JoinColumn` → **lado dono**
+* **`Resource`** tem `@OneToOne(mappedBy = "resource")` → **lado inverso**
+
+
+## ✅ **2️⃣ Como funciona o `fetch` no `OneToOne`**
+
+| Relação                    | Valor padrão | Melhor prática                                    |
+| -------------------------- | ------------ | ------------------------------------------------- |
+| `@OneToOne` (lado dono)    | `EAGER`      | Mudar para `LAZY` para não carregar sempre        |
+| `@OneToOne` (lado inverso) | `EAGER`      | Também mudar para `LAZY` por clareza e eficiência |
+
+➡️ No `OneToOne` **ambos são `EAGER` por padrão**, diferente do `OneToMany` que é `LAZY` no inverso. Por isso é **muito comum querer mudar os dois para `LAZY`**.
+
+
+## ✅ **3️⃣ Usar `@JsonIgnore` nos dois lados**
+
+**Sim, é muito recomendável!**
+
+* Evita loop infinito na serialização JSON:
+
+  * `Lecture` → `Resource` → `Lecture` ...
+* Evita resposta JSON desnecessariamente grande.
+
+
+## ✅ **4️⃣ Resumo**
+
+| Lado                        | Relação               | `fetch`                  | `@JsonIgnore` |
+| --------------------------- | --------------------- | ------------------------ | ------------- |
+| **Lecture (lado dono)**     | `@OneToOne`           | `LAZY, optional = false` | ✔️            |
+| **Resource (lado inverso)** | `@OneToOne(mappedBy)` | `LAZY`                   | ✔️            |
+
+---
+
+## 🚀 **Pronto!**
+
+Assim:
+
+* Você evita consultas automáticas pesadas (graças ao `LAZY`)
+* Garante API limpa, sem loops (graças ao `@JsonIgnore`)
+* Mantém a coerência do mapeamento bidirecional
+
+---
+
+## 📌 **Resumo prático**
+
+✅ `fetch = FetchType.LAZY` → otimiza performance.
+✅ `optional = false` → garante integridade (chave estrangeira obrigatória).
+✅ `@JsonIgnore` → evita problemas de loops infinitos no JSON e lazy-loading que explode no Jackson.
 
 
 
