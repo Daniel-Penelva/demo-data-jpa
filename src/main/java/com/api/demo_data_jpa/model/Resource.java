@@ -2,25 +2,31 @@ package com.api.demo_data_jpa.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "RESOURCE_TBL")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(callSuper = true)
-@SuperBuilder
-public class Resource extends BaseEntity{
+@Builder
+public class Resource{
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
 
     @Column(length = 100)
     private String name;
@@ -37,8 +43,33 @@ public class Resource extends BaseEntity{
     @OneToOne(mappedBy = "resource", fetch = FetchType.LAZY)
     @JsonIgnore
     private Lecture lecture;
+
+    // Associações para composição:
+    // Resource é o relacionamento inverso, e Video é o relacionamento principal (dono), é o lado do dono da relação.
+    @OneToOne(mappedBy = "resource", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Video video;
+
+    // Resource é o relacionamento inverso, e File é o relacionamento principal (dono), é o lado do dono da relação.
+    @OneToOne(mappedBy = "resource", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private File file;
+
+    // Resource é o relacionamento inverso, e Text é o relacionamento principal (dono), é o lado do dono da relação.
+    @OneToOne(mappedBy = "resource", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Text text;
     
 }
+
+/*Anotação:
+ * fetch = FetchType.LAZY: O JPA irá carregar os dados somente quando for necessário, caso contrário, irá carregar apenas o ID.
+ *  - Isso é útil para evitar carregamento desnecessário de dados, especialmente se a entidade for grande ou se você não precisar dela imediatamente.
+ * cascade = CascadeType.ALL:
+ *  - Significa que todas as operações (persistência, atualização, remoção, etc.) realizadas na entidade Resource serão propagadas para a entidade relacionada (Lecture, Video, File, Text).
+ * orphanRemoval = true:
+ * - Significa que, se a entidade Resource for removida da relação, a entidade relacionada (Lecture, Video, File, Text) também será removida do banco de dados.
+*/
 
 /* Observação: 
  *

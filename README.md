@@ -491,6 +491,14 @@ public class Author {
   - ❌ Não define @JoinTable nem @JoinColumn
   - ✅ Apenas reflete a relação
 
+---
+
+## Digrama de Classe - Relacionamentos
+<p align="center">
+  <img src=".\src\main\resources\static\img\Example_Class_Diagram.png" alt="Diagrama de Classe Relacionamentos" width=800/>
+</p>
+
+---
 
 
 ### ✅ Resumo:
@@ -1557,6 +1565,11 @@ public class Author extends BaseEntity{
 
 ✅ Se mudar a base, muda para todas.
 
+## Digrama de Classe BaseEntity
+<p align="center">
+  <img src=".\src\main\resources\static\img\Example_BaseEntity_Class_Diagram.png" alt="Diagrama de Classe Relacionamento BaseEntity" width=800/>
+</p>
+
 
 ## ✅ **Resumo**
 
@@ -1633,6 +1646,328 @@ public class Author extends BaseEntity{
 > 🔑 **`@CreatedBy` e `@LastModifiedBy` só fazem sentido com AuditorAware.**
 >
 > 🔒 **Para preencher com o usuário logado, geralmente é usado Spring Security.**
+
+---
+---
+
+# Relacionamento - Composição
+
+**Composição** significa que `Video`, `File` e `Text` **têm** um `Resource` — eles **usam** o recurso, mas não **são** o recurso.
+
+Quando decide modelar Resource como entidade pai, e Video, File e Text como “extensões” de Resource (composição via relacionamento), isso é uma forma de associação estruturada. E sim:
+  - Você representa isso com um @OneToOne entre Resource e cada subentidade.
+
+## ➡️ **Usa-se quando:**
+
+* As entidades não são naturalmente uma variação polimórfica.
+* Aqui, prefere modularidade sem acoplamento de herança.
+* Tem mais liberdade para evoluir os tipos sem restrição do supertipo.
+
+## ➡️ **Como fica na prática (JPA):**
+
+✅ **Classe Resource** - `relacionamento inverso (dependente)`
+```java
+@Entity
+public class Resource {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    private String name;
+    private int size;
+    private String url;
+
+    @OneToOne(mappedBy = "resource", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Video video;
+
+    // Resource é o relacionamento inverso, e File é o relacionamento principal (dono), é o lado do dono da relação.
+    @OneToOne(mappedBy = "resource", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private File file;
+
+    // Resource é o relacionamento inverso, e Text é o relacionamento principal (dono), é o lado do dono da relação.
+    @OneToOne(mappedBy = "resource", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Text text;
+}
+```
+
+👉 `cascade = CascadeType.ALL:`
+  - Significa que todas as operações (persistência, atualização, remoção, etc.) realizadas na entidade Resource serão propagadas para a entidade relacionada (Lecture, Video, File, Text).
+
+👉 `orphanRemoval = true:`
+  - Significa que, se a entidade Resource for removida da relação, a entidade relacionada (Lecture, Video, File, Text) também será removida do banco de dados.
+
+👉 `fetch = FetchType.LAZY:`
+  - O JPA irá carregar os dados somente quando for necessário, caso contrário, irá carregar apenas o ID.
+  - Isso é útil para evitar carregamento desnecessário de dados, especialmente se a entidade for grande ou se você não precisar dela imediatamente.
+
+✅ **Classe Video** - `relacionamento principal (dono)`
+```java
+@Entity
+@Table(name = "VIDEO_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class Video {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    private int length;
+
+    // É uma relação BIDIRECIONAL OneToOne entre Video e Resource (para ser bidirecional usa a propriedade mappedBy na classe Resource)
+    // Video é o relacionamento principal (dono - possui o @JoinColumn), é o lado do dono da relação e o Resource é o lado inverso da relação (possui mappedBy).
+    @OneToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "resource_id", foreignKey = @ForeignKey(name = "fk_video_resource_id"))
+    private Resource resource;
+    
+}
+```
+
+✅ **Classe File** - `relacionamento principal (dono)`
+```java
+@Entity
+@Table(name = "FILE_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class File {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    private String type;
+
+    // É uma relação BIDIRECIONAL OneToOne entre File e Resource (para ser bidirecional usa a propriedade mappedBy na classe Resource)
+    // File é o relacionamento principal (dono - possui o @JoinColumn), é o lado do dono da relação e o Resource é o lado inverso da relação (possui mappedBy).
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resource_id", foreignKey = @ForeignKey(name = "fk_file_resource_id"))
+    private Resource resource;
+    
+}
+```
+
+✅ **Classe Text** - `relacionamento principal (dono)`
+```java
+
+@Entity
+@Table(name = "TEXT_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class Text {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(length = 500)
+    private String content;
+
+    // É uma relação BIDIRECIONAL OneToOne entre Text e Resource (para ser bidirecional usa a propriedade mappedBy na classe Resource) 
+    // Text é o relacionamento principal (dono - possui o @JoinColumn), é o lado do dono da relação e o Resource é o lado inverso da relação (possui mappedBy).
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "resource_id", foreignKey = @ForeignKey(name = "fk_text_resource_id"))
+    private Resource resource;
+    
+}
+```
+
+  👉 Assim cada Video, File ou Text depende de um Resource.
+  
+  👉 Cada Resource pode ter no máximo um Video, um File e um Text — é restrito um para um.
+
+➡️ **Resultado no banco:**
+
+* Cada entidade tem sua própria tabela.
+* Cada uma tem uma FK para a tabela `Resource`.
+
+➡️ **Prós:**
+
+* Mais flexível: `Resource` pode ser usado por outros tipos.
+* Menos acoplamento.
+* Mais controle de relacionamento.
+
+➡️ **Contras:**
+
+* Não tem polimorfismo: Não se faz `List<Resource>` para misturar todos.
+* Precisa gerenciar as relações manualmente.
+
+---
+
+## Digrama de Classe - Relacionamento com Composição
+<p align="center">
+  <img src=".\src\main\resources\static\img\Example_Composition_Class_Diagram.png" alt="Diagrama de Classe Relacionamento Composição" width=800/>
+</p>
+
+---
+
+## 📌 É realmente composição?
+➡ Tecnicamente, isso é associação via chave estrangeira, mas modela o conceito de composição:
+
+Video não existe sem Resource — logo, é dependente.
+
+O ciclo de vida é gerenciado junto (CascadeType.ALL).
+
+Logo: se o Resource é deletado, o Video (ou File ou Text) também é deletado.
+
+Por isso chamamos de composição via modelagem relacional.
+
+
+## ✅ Composição via Associação (@OneToOne)
+🔹 Objetivo
+Um Resource pode ter:
+
+um Video com metadados específicos,
+
+um File com metadados de arquivo,
+
+um Text com metadados de texto.
+
+Assim, ele pode ter um ou mais filhos ao mesmo tempo.
+
+
+## 🎓 Relações — Composição (OneToOne)
+**Relações:**
+  - Resource tem um Video (1:1)
+  - Resource tem um File (1:1)
+  - Resource tem um Text (1:1)
+
+Cada filho (Video, File, Text) tem uma FK para Resource.
+
+## ✅ Conceitos sobre Composição via Associação (OneToOne) e Agregação via Associação (OneToOne)
+### 📐 Símbolos UML para Composição, Agregação e Associação
+
+| Relação                | Símbolo UML                                           | Significado                                                                        |
+| ---------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| **Associação simples** | Linha normal                                          | Apenas indica que uma classe conhece a outra                                       |
+| **Agregação**          | Linha com **losango vazio** na extremidade            | Parte–todo fraco — o “todo” não possui completamente a “parte”                     |
+| **Composição**         | Linha com **losango preto preenchido** na extremidade | Parte–todo forte — o “todo” possui totalmente a “parte” (ciclo de vida dependente) |
+
+
+### ✅ Relacionamento de composição
+Para a estrutura com Resource + Video, File, Text via OneToOne, em UML se for realmente composição, o correto é usar linha com losango preto na extremidade do todo, apontando para a parte.
+
+**Por exemplo:**
+
+```css
+Resource <>─── Video
+```
+
+Aqui:
+
+  - O losango preto fica no lado do Resource (todo)
+
+  - A ponta da seta vai para Video (parte)
+
+Assim para os outros:
+
+```css
+Resource <>─── File
+Resource <>─── Text
+```
+Significa:
+
+  - Resource é dono do ciclo de vida de Video, File ou Text.
+
+  - Se o Resource for deletado, as partes também devem ser deletadas (ou seja, forte coesão).
+
+## ⚡ Resumo visual
+
+| Caso           | Símbolo              |
+| -------------- | -------------------- |
+| **Composição** | Losango preto (`◆`)  |
+| **Agregação**  | Losango branco (`◇`) |
+| **Associação** | Linha simples        |
+| **Herança**    | Triângulo aberto     |
+
+## Definindo - Relacionamento Composição X Relacionamento Agregação
+
+### ✅ 1️⃣ Composição (Parte–Todo Forte)
+#### 🔑 Definição:
+
+  * A parte (ex: Video) não faz sentido existir sem o todo (Resource).
+
+  * O ciclo de vida da parte é totalmente dependente do todo:
+
+  * Se o Resource é deletado, o Video também é removido.
+
+  * **Exemplo prático:**
+
+      - Um coração dentro de um corpo humano: o coração não existe isolado, só dentro do corpo.
+
+#### 📌 No meu caso:
+
+  * Um Video é um detalhamento de um Resource.
+
+  * Logo: Um Video sem Resource não existe → Composição.
+
+---
+
+### ✅ 2️⃣ Agregação (Parte–Todo Fraco)
+#### 🔑 Definição:
+
+  * A parte (ex: Video) pode existir independentemente do todo (Resource).
+
+  * O ciclo de vida é separado: se o todo é removido, a parte pode continuar existindo.
+
+  * **Exemplo prático:**
+
+      - Uma turma (classe escolar) e seus alunos: os alunos continuam existindo mesmo que a turma seja desfeita.
+
+#### 📌 Se Aplicado no meu caso:
+
+  * Se modelar como agregação, significa:
+
+      - Video pode ser um objeto independente reaproveitado por vários Resource ou até não ter nenhum Resource.
+
+  * Ou seja: não há forte vínculo de posse.
+
+### 🗝️ Resumo - Composição X Agregação
+
+| Relação        | Vínculo     | Independência               |
+| -------------- | ----------- | --------------------------- |
+| **Composição** | Forte posse | Parte não existe sem o todo |
+| **Agregação**  | Posse fraca | Parte pode existir sozinha  |
+
+---
+
+## 🧩 **Resumo prático - Herança X Composição**
+
+| Aspecto       | **Herança**                            | **Composição**                        |
+| ------------- | -------------------------------------- | ------------------------------------- |
+| Estrutura     | Subclasses estendem a superclasse      | Entidades referenciam outra entidade  |
+| Polimorfismo  | Sim                                    | Não                                   |
+| Consulta      | Mais fácil para geral                  | Mais manual                           |
+| Flexibilidade | Mais rígida                            | Mais flexível                         |
+| Banco         | Pode ter JOINs e estrutura hierárquica | Tabelas independentes, ligadas por FK |
+
+
+## 🗝️ **Quando usar cada um - Herança X Composição**
+
+✅ **Herança:**
+
+* Se `Video` é de fato um tipo de `Resource` — e precisa ser tratado genericamente como tal.
+
+✅ **Composição:**
+
+* Se `Resource` é um **recurso reutilizável** (um arquivo na nuvem, por exemplo) e `Video`, `File` e `Text` são **entidades que utilizam esse arquivo**, mas não precisam ser tratadas como o mesmo tipo no código.
+
+
+## 🔑 **Dica**
+
+No mundo real, para arquivos, **composição é mais comum**, pois:
+
+* O recurso pode ser compartilhado por várias entidades (ex: um `Resource` pode ser linkado em vários contextos).
+* Você separa bem o metadado (`Resource`) do uso específico (`Video` com legenda, `File` com tipo MIME).
+
 
 
 
