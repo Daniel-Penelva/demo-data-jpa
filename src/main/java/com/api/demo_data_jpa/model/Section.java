@@ -19,17 +19,19 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "SECTION_TBL")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-public class Section {
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+public class Section extends BaseEntity{
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

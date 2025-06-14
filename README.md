@@ -1,3 +1,4 @@
+# Relacionamento entre as classes
 ## 🧩 REGRA UNIVERSAL:
   Regra vale para **todos os tipos de relacionamentos** (unidirecional ou bidirecional) no JPA/Hibernate.
 
@@ -5,7 +6,7 @@
 >
 > **A classe que possuir a propriedade `mappedBy` é o **lado inverso** da relação (em relacionamentos bidirecionais).**
 
----
+
 
 ## 📚 RELACIONAMENTO UNIDIRECIONAL
 
@@ -31,7 +32,7 @@ public class Lecture {
 }
 ```
 
----
+
 
 ## 🔁 RELACIONAMENTO BIDIRECIONAL
 
@@ -69,7 +70,7 @@ public class Resource {
 }
 ```
 
----
+
 
 ## 🔄 Isso vale para:
 
@@ -80,7 +81,7 @@ public class Resource {
 | `@ManyToOne`    | ✅ Sim (mas já é o dono) | ❌ Não           | ✅ Sim                            |
 | `@ManyToMany`   | ✅ Sim                   | ✅ Sim           | ✅ Sim (quem define `@JoinTable`) |
 
----
+
 
 ## 🧠 Dica final
 
@@ -116,7 +117,7 @@ public class Resource {
 }
 ```
 
----
+
 
 ## 🧭 Comportamento nesse caso:
 
@@ -124,7 +125,7 @@ public class Resource {
 * **`Resource` não tem nenhuma referência à `Lecture`** — ele "não sabe" que está associado a uma `Lecture`.
 * Se tiver uma instância de `Resource`, **não é possível obter a `Lecture` associada diretamente**, a não ser que você faça uma consulta manual (ex: `lectureRepository.findByResource(...)`).
 
----
+
 
 ## 🔁 Já numa relação **bidirecional**:
 
@@ -139,7 +140,7 @@ public class Resource {
 
 Agora sim, `Resource` conhece `Lecture` e o JPA consegue fazer a associação em ambos os sentidos.
 
----
+
 
 ## ✅ Conclusão
 
@@ -148,7 +149,7 @@ Agora sim, `Resource` conhece `Lecture` e o JPA consegue fazer a associação em
 | **Unidirecional** | ❌ Não (apenas do lado que mapeia) | ❌ Não usa `mappedBy`            |
 | **Bidirecional**  | ✅ Sim (Lecture ⇄ Resource)        | ✅ O lado inverso usa `mappedBy` |
 
----
+
 
 # Relacionamento Unidirecional de Um-Para-Um (OneToOne)
 
@@ -157,7 +158,7 @@ Ou seja, só um lado tem uma referência para o outro.
 
 👉 **Em um relacionamento `@OneToOne` unidirecional, não se usa `mappedBy`.**
 
----
+
 
 ### 🔍 Exemplo de relação `@OneToOne` unidirecional:
 
@@ -191,11 +192,11 @@ public class Resource {
 * **Não existe `mappedBy` porque só um lado da relação é mapeado.**
 * **A chave estrangeira (`resource_id`) será criada na tabela `Lecture`**, porque essa é a entidade que possui a referência (`@JoinColumn`).
 
----
+
 
 # Relacionamento Bidirecional Um-Para-Um (OneToOne)
 
----
+
 
 ## 🧠 Ponto chave: Deve usar `mappedBy`
 
@@ -240,7 +241,7 @@ public class Resource {
 * Não cria nova coluna no banco (evita FK duplicada).
 * Permite que você acesse `lecture.getResource()` e `resource.getLecture()`.
 
----
+
 
 ### 🧠 Como o banco vai ficar:
 
@@ -252,7 +253,7 @@ public class Resource {
 
   * Colunas: `id`
 
----
+
 
 ### 🔄 Navegação:
 
@@ -260,13 +261,13 @@ public class Resource {
 * `resource.getLecture()` → retorna a lecture que contém esse recurso.
 
   **OBS.** Para acessar a Lecture, pode acessar o Resource diretamente através da propriedade lecture ou acessar a Lecture através do Resource, pois a relação é bidirecional. 
----
+
 
 ### ✅ Análise da chave estrangeira:
 
 #### Com **apenas uma chave estrangeira** (no caso, `fk_lecture_resource_id` na tabela `lecture`), você consegue acessar **tanto o `Lecture` a partir do `Resource`** quanto o **`Resource` a partir do `Lecture`**, **desde que tenha a relação bidirecional mapeada corretamente no JPA**.
 
----
+
 
 ### 🔁 Como isso funciona:
 
@@ -287,7 +288,7 @@ private Resource resource;
 private Lecture lecture;
 ```
 
----
+
 
 ### 📦 O que o JPA faz nos bastidores:
 
@@ -295,14 +296,14 @@ private Lecture lecture;
 * O JPA entende que a **entidade `Resource` está relacionada a `Lecture`** com base no atributo `mappedBy`.
 * Quando você faz `resource.getLecture()`, o JPA faz uma **consulta reversa**, procurando uma `Lecture` onde `lecture.resource_id = resource.id`.
 
----
+
 
 ### 💡 Isso significa que:
 
 * ✅ **Você só precisa de uma coluna FK no banco** (`lecture.resource_id`).
 * ✅ **Você acessa os dois lados da relação** via JPA, graças ao mapeamento bidirecional.
 
----
+
 
 ### 🧪 Exemplo prático:
 
@@ -317,7 +318,7 @@ Lecture lectureFromResource = res.getLecture();
 
 Tudo funciona sem precisar de uma segunda chave estrangeira, porque o JPA cuida dessa mágica via `mappedBy`.
 
----
+
 
 ### 🔒 Conclusão:
 
@@ -331,11 +332,11 @@ Tudo funciona sem precisar de uma segunda chave estrangeira, porque o JPA cuida 
 | **Unidirecional** | ✅ Sim         | ❌ Não      | Um lado só     |
 | **Bidirecional**  | ✅ Sim         | ✅ Sim      | Ambos os lados |
 
----
+
 
 # Relacionamento Um-Para-Muitos (@OneToMany) / Muitos-Para-Um (@ManyToOne)
 
----
+
 
 ## 🔁 Relação `@OneToMany` / `@ManyToOne` no JPA
 
@@ -345,7 +346,7 @@ Tudo funciona sem precisar de uma segunda chave estrangeira, porque o JPA cuida 
 * **O dono da relação é quem controla a `FK` no banco de dados.**
 * O lado com `@OneToMany(mappedBy = "...")` é o **inverso da relação**.
 
----
+
 
 ### 🔍 Exemplo:
 #### `Section` (lado **dono** da relação):
@@ -379,7 +380,7 @@ public class Course {
 }
 ```
 
----
+
 
 ### 💡 Explicação:
 
@@ -389,7 +390,7 @@ public class Course {
 |           | `@JoinColumn`                     | FK `course_id` na tabela `section`                    |
 | `Course`  | `@OneToMany(mappedBy = "course")` | 🔹 **Inverso da relação** (aponta para quem tem a FK) |
 
----
+
 
 ### 🧠 Sobre dependência:
 
@@ -405,7 +406,7 @@ public class Course {
 | `Section` | `@ManyToOne + @JoinColumn` | ✅ Sim              | ✅ Sim              |
 
 
----
+
 
 # Relacionamento Bidirecional Muitos-Para-Muitos (ManyToMany)
 
@@ -413,7 +414,7 @@ Em uma relação `@ManyToMany`, **nenhum dos lados é tecnicamente "principal" o
 
 > 🔁 **Muitos para muitos**: vários registros de uma entidade estão associados a vários registros da outra.
 
----
+
 
 ### ✅ Mas no **JPA**, é **preciso escolher um lado como o "dono" da relação**.
 
@@ -422,7 +423,7 @@ Isso não significa que uma entidade é mais importante do que a outra, mas sim:
 * Qual entidade **controla a criação e persistência da tabela de junção** no banco.
 * Esse lado usará a anotação `@JoinTable`.
 
----
+
 
 ### 🔑 O lado **"dono"**:
 
@@ -435,7 +436,7 @@ Isso não significa que uma entidade é mais importante do que a outra, mas sim:
 * Usa `mappedBy` apontando para o nome do atributo no lado dono.
 * **Não deve** usar `@JoinTable`.
 
----
+
 
 ### 🧠 Exemplo prático:
 
@@ -490,7 +491,7 @@ public class Author {
   - ❌ Não define @JoinTable nem @JoinColumn
   - ✅ Apenas reflete a relação
 
----
+
 
 ### ✅ Resumo:
 
@@ -516,11 +517,13 @@ public class Author {
 ---
 ---
 
+# Comportamento de exclusão `@OnDelete`
+
 ## 🧩 O que é `@OnDelete`?
 
 A anotação `@OnDelete` é do **Hibernate** (não do JPA puro) e serve para delegar a **remoção em cascata ao banco de dados** por meio de `ON DELETE CASCADE`, em vez de o Hibernate fazer isso em memória com `orphanRemoval` ou `cascade`.
 
----
+
 
 ### 🔧 Sintaxe Básica
 
@@ -530,7 +533,7 @@ A anotação `@OnDelete` é do **Hibernate** (não do JPA puro) e serve para del
 
 * Isso significa que, quando a **entidade pai for deletada**, o banco **automaticamente remove as entidades filhas** (em vez de Hibernate fazer isso com várias `DELETE` individuais).
 
----
+
 
 ## ✅ Análise Entidade por Entidade
 
@@ -585,7 +588,7 @@ public class Section {
 
   ✔️ Agora, **quando um `Course` for deletado**, o banco de dados automaticamente deletará as `Sections` relacionadas, sem precisar carregar os objetos na memória.
 
----
+
 
 ### 🔹 `Section` → `Lecture` (OneToMany)
 #### ✅ Entidade Section
@@ -634,7 +637,7 @@ public class Lecture {
   
   ✔️ O `@OnDelete` precisa estar no lado que tem a `@JoinColumn` (ou seja, `@ManyToOne` ou `@OneToOne` dono).
 
----
+
 
 ### 🔹 `Lecture` → `Resource` (OneToOne)
 #### ✅ Entidade Lecture
@@ -687,7 +690,7 @@ public class Lecture {
 ```
   ✔️ O `@OnDelete` precisa estar no lado que tem a `@JoinColumn` (ou seja, `@ManyToOne` ou `@OneToOne` dono).
 
----
+
 
 ### 🔹 `Course` ↔ `Author` (ManyToMany)
 #### ✅ Entidade Course
@@ -747,7 +750,7 @@ public class Course {
 
 ⚠️ *Isso **não deleta os autores** do banco, apenas a **associação entre eles e os cursos**.*
 
----
+
 
 ## ❌ Onde **não** usar `@OnDelete`
 
@@ -755,7 +758,7 @@ public class Course {
 
 Esses lados são **mapeados inversamente**. O `@OnDelete` precisa estar no lado que tem a `@JoinColumn` (ou seja, `@ManyToOne` ou `@OneToOne` dono).
 
----
+
 
 ## ✅ Resumo Final com Sugestões
 
@@ -766,7 +769,7 @@ Esses lados são **mapeados inversamente**. O `@OnDelete` precisa estar no lado 
 | `Lecture` | `resource`                | ✅ Se exclusivo       | Deletar Lecture → deleta Resource (se não for compartilhado) |
 | `Course`  | `authors` (`@ManyToMany`) | ✅ Sim                | Deletar Course → remove vínculos na tabela `courses_authors` |
 
----
+
 
 ## 🧪 Resumo Prático para as entidades
 
@@ -777,7 +780,7 @@ Esses lados são **mapeados inversamente**. O `@OnDelete` precisa estar no lado 
 | `Lecture` → `Resource`     | Em `Lecture.resource`                      | Ao deletar uma Lecture, o Resource pode ser removido              |
 | `Course` → `Author` (join) | Em `@ManyToMany` do Course com `@OnDelete` | Ao deletar um Course, as linhas da tabela de junção são removidas |
 
----
+
 
 ## ✅ Onde o `@OnDelete` pode ser usado?
 
@@ -788,7 +791,7 @@ Esses lados são **mapeados inversamente**. O `@OnDelete` precisa estar no lado 
 | `@OneToOne`   | ✅ Sim (lado dono)                                                      |
 | `@ManyToMany` | ✅ Sim (na `@JoinTable`)                                                |
 
----
+
 
 ## 🚫 Cuidados com `@OnDelete`
 
@@ -798,6 +801,7 @@ Esses lados são **mapeados inversamente**. O `@OnDelete` precisa estar no lado 
 
 ---
 ---
+# Tipo de carregamento (`fetch = FetchType.LAZY`) e Ignorar Serialização/Desserialização `@JsonIgnore`
 
 ## 🚀 **1️⃣ `fetch = FetchType.LAZY`**
 
@@ -1173,6 +1177,7 @@ Assim:
 
 ---
 ---
+# Anotação `@JsonProperty`
 
 ## ✅ **1️⃣ O que é o `@JsonProperty`?**
 
@@ -1363,14 +1368,271 @@ getAuthors(): Observable<Author[]> {
 ✅ O **nome do JSON = nome na interface** para funcionar direto sem mapeamento.
 ✅ Se quiser camelCase no front e snake\_case no JSON, tem que mapear manualmente.
 
+---
+---
+
+# Base Entity (Entidade Base) 
+  👉 É uma classe que contém as propriedades comuns a todas as entidades do sistema. Ela é usada como base para as outras entidades, herdando suas propriedades e comportamentos.
+
+  👉 O uso de uma BaseEntity para centralizar auditoria e identificadores comuns.
+
+  👉 Entidade Base é chamado de entidade base, entidade abstrata, classe base, superclasse mapeada ou entidade pai — todos esses nomes são válidos, dependendo do contexto. 
+
+## ✅ **Exemplo real com `BaseEntity`**
+
+## 🎓 **Classe Base** **(`BaseEntity`)**
+
+```java
+@MappedSuperclass
+@EntityListeners(AuditingEntityListener.class)
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+public class BaseEntity {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @CreatedDate 
+    private LocalDateTime createdAt; // Vai criar a data e a hora automaticamente quando o objeto for criado
+
+    @LastModifiedDate
+    private LocalDateTime lastModifiedAt; // Vai criar a data e na hora automaticamente quando o objeto for atualizado
+
+    @CreatedBy
+    private String createdBy; // Vai criar o usuário que criou o objeto
+
+    @LastModifiedBy
+    private String lastModifiedBy; // Vai criar o usuário que alterou o objeto
+    
+}
+```
+
+## 📌 **1️⃣ `@MappedSuperclass` — O que faz**
+
+```java
+@MappedSuperclass
+```
+    ✅ Indica que BaseEntity não é uma tabela própria, mas suas colunas serão herdadas por todas as entidades concretas que a estendem (Author, Course, etc).
+
+    ➡️ Assim, nenhuma tabela base_entity é criada no banco — apenas as colunas id, createdAt, lastModifiedAt, createdBy,   lastModifiedBy aparecem diretamente nas tabelas filhas.
+
+    ➡️ É uma **classe abstrata** que **não é uma entidade isolada**, ou seja, não gera tabela sozinha.
+
+    ➡️ Ela serve para **fornecer campos comuns** e comportamentos para outras entidades concretas que a estendem.
+
+    ➡️ Assim, todas as entidades filhas **herdam esses campos e seus mapeamentos JPA**, sem precisar duplicar código.
+
+
+## 📌 **2️⃣ `@EntityListeners(AuditingEntityListener.class)` — Por que usar**
+
+```java
+@EntityListeners(AuditingEntityListener.class)
+```
+
+> ✅ Ativa o **Spring Data JPA Auditing**, permitindo que o Spring preencha **automaticamente** as anotações:
+
+* `@CreatedDate` → data de criação
+* `@LastModifiedDate` → data da última atualização
+* `@CreatedBy` → usuário que criou
+* `@LastModifiedBy` → usuário que alterou
+
+Para funcionar, **não esqueça de ativar no projeto**:
+
+```java
+@SpringBootApplication
+@EnableJpaAuditing
+public class MyApplication { ... }
+```
+
+## 📌 **3️⃣ `@SuperBuilder` — Vantagem**
+
+> ✅ O `@SuperBuilder` (do Lombok) permite usar o builder padrão **inclusive para classes que herdam de uma superclasse com builder**.
+
+Assim, consegue:
+
+```java
+Author author = Author.builder()
+    .firstName("Ana")
+    .lastName("Silva")
+    .email("ana@email.com")
+    .age(30)
+    .build();
+```
+
+E o `id` e auditoria são gerenciados pelo JPA — não precisa passar.
+
+
+## 📌 **4️⃣ `@EqualsAndHashCode(callSuper = true)`**
+
+> ✅ Garante que o `equals()` e `hashCode()` considerem também os campos da superclasse (`id`, auditoria).
+> Sem isso, o Lombok gera só com os campos da própria classe filha.
+
+
+## 📌 **5️⃣ Exemplo na prática — resultado**
+
+Tabela `AUTHOR_TBL`:
+
+| id | created\_at | last\_modified\_at | created\_by | last\_modified\_by | first\_name | last\_name | email | age |
+| -- | ----------- | ------------------ | ----------- | ------------------ | ----------- | ---------- | ----- | --- |
+
+✅ Nenhuma coluna duplicada.
+✅ Controle de auditoria automático.
+✅ Fácil de reaproveitar em todas as entidades do sistema.
+
+
+## 📌 **6️⃣ Considerações de boas práticas**
+
+✔️ **Use para todos os campos comuns**: `id`, `createdAt`, `updatedAt`, `createdBy`, `updatedBy`, `isActive` (se tiver soft delete).
+✔️ Evite colocar campos de negócio na `BaseEntity`. Deixe apenas **infraestrutura de persistência**.
+✔️ Use com DTOs se quiser expor datas formatadas ou mascarar `createdBy`.
+
+
+## 📌 **7️⃣ Dica extra — para `createdBy` e `lastModifiedBy` funcionar**
+
+Esses campos **precisam de um AuditorAware** para informar quem é o usuário atual:
+
+```java
+@Bean
+public AuditorAware<String> auditorProvider() {
+    return () -> Optional.ofNullable(SecurityContextHolder.getContext().getAuthentication().getName());
+}
+```
+
+Assim o Spring sabe de onde pegar o usuário autenticado.
+
+
+## ✅ **Resumo do que foi feito**
+
+| Item                                       | O que faz                           |
+| ------------------------------------------ | ----------------------------------- |
+| `@MappedSuperclass`                        | Herança de colunas sem criar tabela |
+| `@EntityListeners`                         | Ativa auditoria automática          |
+| `@SuperBuilder`                            | Facilita `builder` com herança      |
+| `@EqualsAndHashCode(callSuper = true)`     | Inclui superclasse no `equals`      |
+| Campos `@CreatedDate`, `@LastModifiedDate` | Preenchidos pelo Spring             |
+| Campos `@CreatedBy`, `@LastModifiedBy`     | Pegam usuário autenticado           |
+
+---
+
+## 🎓 **Usando nas Entidades**
+
+Agora, é só estender a base **(`public class Author extends BaseEntity{...}`)**:
+
+```java
+@Entity
+@Table(name = "AUTHOR_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+public class Author extends BaseEntity{
+
+    @Column(name = "first_name", nullable = false, length = 35)
+    @JsonProperty("first_name")
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    @JsonProperty("last_name")
+    private String lastName;
+
+    // outros campos...
+}
+```
+> ✅ OBSERVAÇÃO.  **Essa configuração vai ser o mesmo para todas as outras entidades.**
+
+## 📌 **1️⃣ `@EqualsAndHashCode(callSuper = true)`**
+
+> ✅ Garante que o `equals()` e `hashCode()` considerem também os campos da superclasse (`id`, auditoria).
+> Sem isso, o Lombok gera só com os campos da própria classe filha.
+
+## 🗝️ **O que isso faz na prática?**
+
+✅ Todos os campos `id`, `createdAt`, `lastModifiedAt`, `createdBy`, `lastModifiedBy` **são mapeados automaticamente** em `Course`, `Author`, `Section`, etc.
+
+✅ Você não precisa duplicar essas anotações.
+
+✅ Se mudar a base, muda para todas.
+
+
+## ✅ **Resumo**
+
+| Item                      | Herança com `@MappedSuperclass`            |
+| ------------------------- | ------------------------------------------ |
+| Tabela para a superclasse | ❌ Não cria                                 |
+| Campos herdados           | ✅ Sim                                      |
+| Compartilha mapeamentos   | ✅ Sim                                      |
+| Usa polimorfismo JPA      | ❌ Não, só herda campos                     |
+| Usado para                | Campos comuns (audit, id, timestamps, etc) |
+
+
+## 🔑 **Quando NÃO usar**
+
+* Se precisar de polimorfismo JPA (consultar todas as filhas juntas), use `@Inheritance` e `@Entity` na base.
+* `@MappedSuperclass` não gera uma tabela própria.
+
+--- 
+
+## ✅ **Propósito Real BaseEntity**
+    > ✅ Proposito Real do BaseEntity quando ele inclui campos como `createdBy` e `lastModifiedBy`.
+
+
+## 📌 **1️⃣ O `BaseEntity` é para controle genérico de auditoria**
+
+* **Independente do Spring Security**, um `BaseEntity` com `id`, `createdAt` e `lastModifiedAt` já é **muito útil**:
+  Ele sempre registra **quando foi criado** e **quando foi alterado**, mesmo que não haja login/autenticação.
+
+  👉 **Esses campos (`createdAt` e `lastModifiedAt`) são 100% automáticos**, só exigem `@EnableJpaAuditing`.
 
 
 
+## 📌 **2️⃣ Para `createdBy` e `lastModifiedBy`, é **opcional** usar Spring Security**
+
+* Esses campos são **para registrar *quem* fez a ação**.
+* Sozinhos, eles **não funcionam automaticamente** — precisam de uma fonte de usuário: por exemplo, `SecurityContextHolder` do Spring Security.
+* Ou seja:
+
+  * **Com Spring Security:** funciona lindamente, cada `save()` guarda o usuário logado.
+  * **Sem autenticação:** você precisa definir um valor padrão (`"SYSTEM"` ou `"ANONYMOUS"`) ou omitir esses campos.
+
+
+## 📌 **3️⃣ Resumindo**
+
+| Campo            | Precisa de Spring Security? | Funciona sem autenticação?  |
+| ---------------- | --------------------------- | --------------------------- |
+| `id`             | ❌                           | ✅                           |
+| `createdAt`      | ❌                           | ✅                           |
+| `lastModifiedAt` | ❌                           | ✅                           |
+| `createdBy`      | ✅ para valor real           | ⚠️ Precisa de um valor fixo |
+| `lastModifiedBy` | ✅ para valor real           | ⚠️ Precisa de um valor fixo |
 
 
 
+## 📌 **4️⃣ Então o `BaseEntity` é útil em qualquer cenário**
+
+✅ **Para rastrear datas de criação/modificação — SEM segurança já é valioso.**
+✅ **Se quiser rastrear *quem* fez, aí sim precisa do AuditorAware e (geralmente) do Spring Security.**
 
 
+
+## 🎓 **5️⃣ Boas práticas**
+
+✅ DICA: Se sua aplicação não tem autenticação agora, mas terá no futuro — **deixe os campos `createdBy` e `lastModifiedBy` preparados**, mas preencha com `"SYSTEM"` ou `"ADMIN"` via AuditorAware. Assim, a estrutura já fica correta.
+
+✅ Se nunca vai usar autenticação — pode até omitir esses campos, ou mantê-los só para preencher valores genéricos.
+
+
+
+## ✅ **Resumo final**
+
+> 🗂️ **`BaseEntity` = reuso + rastreamento de auditoria + consistência.**
+>
+> 🔑 **`@CreatedBy` e `@LastModifiedBy` só fazem sentido com AuditorAware.**
+>
+> 🔒 **Para preencher com o usuário logado, geralmente é usado Spring Security.**
 
 
 

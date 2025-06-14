@@ -8,27 +8,22 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "AUTHOR_TBL")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@Builder
-public class Author {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+public class Author extends BaseEntity{
 
     @Column(name = "first_name", nullable = false, length = 35)
     @JsonProperty("first_name")
@@ -183,6 +178,7 @@ public class Author {
  * @JsonProperty: Anotação do Jackson que indica que o campo deve ser serializado e desserializado com um nome específico no JSON. Isso é útil para personalizar o nome do campo no JSON.
  * optional = false: Indica que a relação é obrigatória, ou seja, não pode ser nula. (chave estrangeira obrigatória)
  * 
+ * @EqualsAndHashCode(callSuper = true): Garante que o equals e hashCode considerem os campos da superclasse BaseEntity.
 */
 
 /* Observação: 
