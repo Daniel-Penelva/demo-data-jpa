@@ -1968,7 +1968,218 @@ No mundo real, para arquivos, **composição é mais comum**, pois:
 * O recurso pode ser compartilhado por várias entidades (ex: um `Resource` pode ser linkado em vários contextos).
 * Você separa bem o metadado (`Resource`) do uso específico (`Video` com legenda, `File` com tipo MIME).
 
+---
+---
 
+# Relacionamento - Herança **`(@Inheritance)`**
+
+  - A superclasse é a classe que herda atributos e métodos para as subclasses.
+  - A subclasse é a classe que herda atributos e métodos da superclasse.
+  - A subclasse pode ter atributos e métodos adicionais.
+  - A subclasse pode ter atributos e métodos que sobrescrevem os da superclasse.
+  - A subclasse pode ter atributos e métodos que não existem na superclasse.
+  - No meu caso:
+    - Herança significa que Video, File e Text são um Resource.
+    - Video, File e Text herdam de Resource.
+
+### ➡️ Usa-se quando:
+
+  - As subclasses têm características em comum (atributos e métodos) que podem ser generalizados.
+
+  - Você quer tratar todos os tipos de forma polimórfica. Ex: uma lista de Resource pode conter Video, File e Text.
+
+### ➡️ Resultado no banco:
+
+  - Resource tem colunas comuns.
+
+  - Video tem colunas extras específicas.
+
+  - Mesma coisa para File e Text.
+
+### ➡️ Prós:
+
+  - Reuso de atributos.
+
+  - Consulta polimórfica (SELECT * FROM Resource traz todos).
+
+  - Código limpo para coisas comuns.
+
+---
+
+## Digrama de Classe - Relacionamento com Herança
+<p align="center">
+  <img src=".\src\main\resources\static\img\Example_Inheritance_Class_Diagram.png" alt="Diagrama de Classe Relacionamento Herança" width=800/>
+</p>
+
+## 🗂️ Para Herança
+  - Usa-se uma linha com um triângulo aberto na ponta, apontando para a superclasse:
+
+```mathematica
+Video ──▷ Resource  
+File ──▷ Resource  
+Text ──▷ Resource
+```
+
+## Tipos de estratégias de Herança
+
+  * **1️⃣ `@Inheritance(strategy = InheritanceType.SINGLE_TABLE)`**
+
+  * **2️⃣ `@Inheritance(strategy = InheritanceType.JOINED)`**
+
+  * **3️⃣ `@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)`**
+
+  * **@Inheritance - Define a estratégia de herança.**
+
+### 1️⃣ @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+
+  - Significa que todas as entidades filhas (subclasses: Video, File, Text) serão armazenadas em uma única tabela no banco de dados da superclasse (Resource).
+    - Só existe uma tabela **`RESOURCE_TBL`** que guarda todos os campos de todas as subclasses.
+
+  - O Hibernate cria uma **`coluna discriminadora (DTYPE por padrão)`** para saber o tipo da linha.
+
+  - Cada entidade filha terá um campo/coluna chamado `type` que indica o tipo da entidade. **Ex:** Para representar a classe Filha **`Video`** pode usar o `type = 'V'`.
+
+  - Para criar a coluna usa-se o `@DiscriminatorColumn(name = "type")`. **Ex:** `@DiscriminatorColumn(name = "resource_type")`.
+    - Essa coluna `resource_type` é usada para identificar o tipo de entidade.
+
+  - Para criar o valor do campo usa-se o `@DiscriminatorValue(value = "value")`. **Ex:** `@DiscriminatorValue(value = "V")`
+    - Essa anotação indica que a classe `Video` é uma subclasse `Video` da superclasse `Resource`.
+    - A subclasse `Video` vai ser identficada pelo valor `'V'` no campo `resource_type`.
+    - O mesmo para as outras subclasses:
+      - A subclasse `File` vai ser identficada pelo valor `'F'` no campo `resource_type`.
+      - A subclasse `Text` vai ser identficada pelo valor `'T'` no campo `resource_type`.
+
+**Exemplo de uso:**
+
+<p align="center">
+  <img src=".\src\main\resources\static\img\Database_inheritance_single_table.png" alt="Diagrama de Classe Relacionamento Herança" width=800/>
+</p>
+
+**Na prática - implementação classe pai e classes filhas**
+
+✅ **`Superclasse Resource`- Superclass (classe pai)** 
+```java
+@Entity
+@Table(name = "RESOURCE_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@DiscriminatorColumn(name = "resource_type") 
+public class Resource{
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(length = 100)
+    private String name;
+
+    private int size;
+    private String url;
+}
+```
+✅ **`Subclasse Video`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true) 
+@DiscriminatorValue("V")
+public class Video extends Resource{
+
+    private int length;
+}
+```
+
+✅ **`Subclasse File`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+@DiscriminatorValue("F")
+public class File extends Resource{
+
+    private String type;
+}
+```
+
+✅ **`Subclasse Text`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+@DiscriminatorValue("T")
+public class Text extends Resource{
+
+    @Column(length = 500)
+    private String content;
+}
+```
+
+**Na prática - testando**
+
+```java
+@Component
+public class InheritanceClassExample implements CommandLineRunner {
+
+    @Autowired
+    private VideoRepository videoRepository;
+
+    @Autowired
+    private FileRepository fileRepository;
+
+    @Autowired
+    private TextRepository textRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        var video = Video.builder()
+                .name("Video 1")
+                .size(15)
+                .url("video1.com")
+                .length(5)
+                .build();
+
+        var file = File.builder()
+                .name("File 1")
+                .size(5)
+                .url("file1.com")
+                .type("png")
+                .build();
+
+        var text = Text.builder()
+                .name("Text 1")
+                .size(10)
+                .url("text1.com")
+                .content("Este é um arquivo de texto.")
+                .build();
+
+        videoRepository.save(video);
+        fileRepository.save(file);
+        textRepository.save(text);
+
+        System.out.println("Nome do vídeo: " + video.getName() + " - Duração: " + video.getLength());
+        System.out.println("Nome do Arquivo: " + file.getName() + " - Tipo: " + file.getType());
+        System.out.println("Nome do Arquivo: " + text.getName() + " - Conteúdo: " + text.getContent());
+
+    }
+
+}
+```
 
 
 
