@@ -1,7 +1,8 @@
 package com.api.demo_data_jpa.model;
 
-import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -9,12 +10,13 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Entity
+@Table(name = "VIDEO_TBL")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true) // Para garantir que o equals e hashCode considerem os campos da classe pai Resource
-@DiscriminatorValue("V")  // Indica que a classe é uma subclasse de Resource e que o valor do campo "type" é "V".
+@PrimaryKeyJoinColumn(name = "video_id")
 public class Video extends Resource{
 
     private int length;
@@ -36,4 +38,8 @@ public class Video extends Resource{
  * optional = false:
  * - Significa que a relação é obrigatória, ou seja, um Video deve sempre ter um Resource associado. Se você tentar salvar um Video sem um Resource, ocorrerá uma exceção.
  * Isso garante que a integridade referencial seja mantida, ou seja, um Video sempre deve ter um Resource associado.
+ * 
+ * @PrimaryKeyJoinColumn(name = "video_id"):
+ *  - É utilizada para especificar que uma coluna de chave primária em uma entidade também serve como chave estrangeira para outra entidade.
+ *  - A tabela resource_tbl tem uma chave primária "id" que também é chave estrangeira para a tabela video_tbs.
 */

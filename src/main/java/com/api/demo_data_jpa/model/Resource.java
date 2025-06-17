@@ -3,12 +3,13 @@ package com.api.demo_data_jpa.model;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -18,11 +19,11 @@ import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "RESOURCE_TBL")
+@Inheritance(strategy = InheritanceType.JOINED)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-@SuperBuilder
-@DiscriminatorColumn(name = "resource_type") 
+@SuperBuilder 
 public class Resource{
 
     @Id

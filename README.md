@@ -2061,6 +2061,7 @@ Text ──▷ Resource
 ```java
 @Entity
 @Table(name = "RESOURCE_TBL")
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -2181,8 +2182,111 @@ public class InheritanceClassExample implements CommandLineRunner {
 }
 ```
 
+### 2️⃣ InheritanceType.JOINED
 
+  👉 Cria uma tabela para a superclasse + uma para cada subclasse, ligadas por FK. Ou seja, cada subclasse tem uma tabela própria e uma tabela para a superclasse.
 
+✅ Como funciona JOINED:
+
+  - Superclass (Classe Pai)
+
+    - RESOURCE_TBL: contém id + campos comuns.
+
+  - Subclasses (Classe Filha)
+
+    - VIDEO_TBL: contém id (FK para RESOURCE_TBL) + campos da Video (length).
+
+    - FILE_TBL: contém id (FK para RESOURCE_TBL) + campos da File (type).
+
+    - TEXT_TBL: contém id (FK para RESOURCE_TBL) + campos da Text (content).
+
+➡️ É mais normalizado e evita colunas NULL que o SINGLE_TABLE pode ter.
+
+✅ Anotação **`@PrimaryKeyJoinColumn(name = "video_id")`**
+
+  - É utilizada para especificar que uma coluna de chave primária em uma entidade também serve como chave estrangeira para outra entidade.
+
+  - Por exemplo, A tabela resource_tbl tem uma chave primária "id" que também é chave estrangeira para a tabela video_tbs.
+
+<p align="center">
+  <img src=".\src\main\resources\static\img\Database_exemploHeranca_joined.png" alt="Diagrama de Classe Relacionamento Herança" width=800/>
+</p>
+
+**Na prática - implementação classe pai e classes filhas**
+
+✅ **`Superclasse Resource`- Superclass (classe pai)** 
+```java
+@Entity
+@Table(name = "RESOURCE_TBL")
+@Inheritance(strategy = InheritanceType.JOINED)
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder 
+public class Resource{
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    @Column(length = 100)
+    private String name;
+
+    private int size;
+    private String url;
+}
+```
+✅ **`Subclasse Video`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Table(name = "VIDEO_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+@PrimaryKeyJoinColumn(name = "video_id")
+public class Video extends Resource{
+
+    private int length;
+}
+```
+
+✅ **`Subclasse File`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Table(name = "FILE_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true) 
+@PrimaryKeyJoinColumn(name = "file_id")
+public class File extends Resource{
+
+    private String type;
+}
+```
+
+✅ **`Subclasse Text`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Table(name = "TEXT_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+@PrimaryKeyJoinColumn(name = "text_id")
+public class Text extends Resource{
+
+    @Column(length = 500)
+    private String content;
+}
+```
 
 
 

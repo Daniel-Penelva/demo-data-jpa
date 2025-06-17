@@ -1,8 +1,9 @@
 package com.api.demo_data_jpa.model;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
+import jakarta.persistence.PrimaryKeyJoinColumn;
+import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -10,12 +11,13 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Entity
+@Table(name = "TEXT_TBL")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true) // Para garantir que o equals e hashCode considerem os campos da classe pai Resource
-@DiscriminatorValue("T") // Indica que a classe é uma subclasse de Resource e que o valor do campo "type" é "T". 
+@PrimaryKeyJoinColumn(name = "text_id")
 public class Text extends Resource{
 
     @Column(length = 500)
@@ -38,4 +40,8 @@ public class Text extends Resource{
  * optional = false:
  * - Significa que a relação é obrigatória, ou seja, um Text deve sempre ter um Resource associado. Se você tentar salvar um Text sem um Resource, ocorrerá uma exceção.
  * Isso garante que a integridade referencial seja mantida, ou seja, um Text sempre deve ter um Resource associado.
+ * 
+ * @PrimaryKeyJoinColumn(name = "text_id"):
+ *  - É utilizada para especificar que uma coluna de chave primária em uma entidade também serve como chave estrangeira para outra entidade.
+ *  - A tabela resource_tbl tem uma chave primária "id" que também é chave estrangeira para a tabela text_tbs.
 */
