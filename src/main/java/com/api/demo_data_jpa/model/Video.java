@@ -1,8 +1,6 @@
 package com.api.demo_data_jpa.model;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.PrimaryKeyJoinColumn;
-import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -10,13 +8,11 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 @Entity
-@Table(name = "VIDEO_TBL")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @SuperBuilder
 @EqualsAndHashCode(callSuper = true) // Para garantir que o equals e hashCode considerem os campos da classe pai Resource
-@PrimaryKeyJoinColumn(name = "video_id")
 public class Video extends Resource{
 
     private int length;

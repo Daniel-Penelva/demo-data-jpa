@@ -2288,7 +2288,106 @@ public class Text extends Resource{
 }
 ```
 
+### 3️⃣ InheritanceType.TABLE_PER_CLASS
 
+  👉 Cada subclasse gera sua tabela própria, com todos os campos herdados copiados (NÃO HÁ TABELA PARA A SUPERCLASSE).
+
+✅ Como funciona TABLE_PER_CLASS:
+
+  - NÃO existe tabela RESOURCE.
+
+  - Hibernate cria VIDEO, FILE e TEXT, cada uma contendo id + campos comuns + campos específicos.
+
+  - Consultas polimórficas podem ser mais lentas porque Hibernate faz UNION ALL para juntar tudo.
+
+✅ Detalhe técnico na estratégia TABLE_PER_CLASS:
+
+  - A estratégia `TABLE_PER_CLASS` **não funciona com** `GenerationType.IDENTITY`.
+
+  - **Por que isso acontece?** 
+    - Isso acontece porque, para TABLE_PER_CLASS, o Hibernate gera uma tabela separada para cada subclasse, e cada tabela precisa ter seu próprio mecanismo de geração de ID — mas o IDENTITY é baseado na tabela pai, que não existe nesse caso
+
+    - **Solução:** Para `TABLE_PER_CLASS` se deve usar `GenerationType.TABLE` ou `GenerationType.SEQUENCE` **(recomendado para bancos que suportam SEQUENCE, como PostgreSQL)**. Esses métodos funcionam independente da tabela pai existir ou não.
+
+```java 
+  @Id
+  @GeneratedValue(strategy = GenerationType.TABLE)
+  private Integer id;
+```
+   - Isso cria uma tabela auxiliar de sequenciamento (hibernate_sequences ou algo do tipo) para gerar os IDs de todas as entidades.
+
+<p align="center">
+  <img src=".\src\main\resources\static\img\Database_exemploHeranca_table_per_class.png" alt="Diagrama de Classe Relacionamento Herança" width=800/>
+</p>
+
+**Na prática - implementação classe pai e classes filhas**
+
+✅ **`Superclasse Resource`- Superclass (classe pai)** 
+```java
+@Entity
+@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+public class Resource{
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.TABLE)
+    private Integer id;
+
+    @Column(length = 100)
+    private String name;
+
+    private int size;
+    private String url;
+}
+```
+✅ **`Subclasse Video`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class Video extends Resource{
+
+    private int length;
+}
+```
+
+✅ **`Subclasse File`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class File extends Resource{
+
+    private String type;
+}
+```
+
+✅ **`Subclasse Text`- Subclass (classe filha)** 
+
+```java
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+@EqualsAndHashCode(callSuper = true)
+public class Text extends Resource{
+
+    @Column(length = 500)
+    private String content;
+}
+```
 
 
 
