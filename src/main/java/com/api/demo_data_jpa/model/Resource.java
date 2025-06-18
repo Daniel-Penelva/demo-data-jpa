@@ -1,5 +1,8 @@
 package com.api.demo_data_jpa.model;
 
+import org.hibernate.annotations.Polymorphism;
+import org.hibernate.annotations.PolymorphismType;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import jakarta.persistence.Column;
@@ -18,6 +21,7 @@ import lombok.experimental.SuperBuilder;
 
 @Entity
 @Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+@Polymorphism(type = PolymorphismType.EXPLICIT)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -94,7 +98,15 @@ public class Resource{
  *  - Significa que a coluna "resource_type" da tabela Resource terá o valor " V" para as entidades filhas do tipo Video.
  *  - Isso é útil para determinar o tipo da entidade filha a partir da tabela Resource.
  * 
+ * @Polymorphism(type = PolymorphismType.EXPLICIT): 
+ *  - É utilizada para especificar o tipo de polimorfismo que deve ser usado para a entidade.
+ *  - O PolymorphismType.EXPLICIT significa que o tipo de entidade deve ser explicitamente definido quando a entidade for carregada.
+ *  - Consultas polimorficas só funcionam se utilizar TREAT ou consultas explícitas, caso contrário, o Hibernate consulta somente a tabela específica (não faz UNION).
  * 
+ * @Polymorphism(type = PolymorphismType.IMPLICIT) é padrão:
+ *  - É utilizada para especificar o tipo de polimorfismo que deve ser usado para a entidade.
+ *  - O PolymorphismType.IMPLICIT significa que o tipo de entidade não precisa ser explicitamente definido quando a entidade for carregada.
+ *  - Consultas polimórficas consideram todas as subclasses automaticamente. Por exemplo, "select * from Resource" faz UNION ALL com as tabelas Video, File e Text.
 */
 
 /* Observação: 

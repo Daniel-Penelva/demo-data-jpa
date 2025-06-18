@@ -2389,17 +2389,488 @@ public class Text extends Resource{
 }
 ```
 
+---
+---
+# Polimorfismo no Hibernate
+
+O **`@Polymorphism`** **não faz parte do JPA padrão**, mas é uma anotação **específica do Hibernate** para controlar como o Hibernate realiza **consultas polimórficas** quando usa herança — especialmente com `TABLE_PER_CLASS`.
+
+## ✅ **👉 O que é polimorfismo no exemplo abaixo**
+
+Neste caso:
+
+```java
+Resource r = new Video();
+```
+
+**Significa:**
+
+* `Resource` é a **classe base**.
+* `Video` é uma **subclasse**.
+* Aqui, está usando uma **referência do tipo `Resource`** para apontar para um **objeto do tipo `Video`**.
+
+Isto é **polimorfismo em Java puro**:
+Você trata vários tipos derivados de forma genérica usando o tipo pai.
+
+
+## ✅ **👉 E polimorfismo no Hibernate?**
+
+**O Hibernate replica esse polimorfismo no banco:**
+
+* Quando faz:
+
+  ```java
+  resourceRepository.findAll();
+  ```
+
+  Com `TABLE_PER_CLASS` e `@Polymorphism(IMPLICIT)`, o Hibernate executa um **UNION**:
+
+  ```sql
+  SELECT * FROM Video
+  UNION
+  SELECT * FROM File
+  UNION
+  SELECT * FROM Text;
+  ```
+
+  → E monta uma **lista de `Resource`**, que na prática contém objetos reais: `Video`, `File`, `Text`.
+
+
+## ✅ **Resumo**
+
+| Onde?                | O que é polimorfismo?                                                              |
+| -------------------- | ---------------------------------------------------------------------------------- |
+| **No Java**          | `Resource r = new Video();`                                                        |
+| **No Hibernate/JPA** | Consultar `Resource` e receber instâncias de subclasses (`Video`, `File`, `Text`). |
+
+
+## ✅ **Na prática**
+
+Se fizer:
+
+```java
+Resource r = resourceRepository.findById(1).get();
+System.out.println(r.getClass()); // 👈 Vai mostrar Video, File ou Text de verdade!
+```
+
+Mesmo que `r` seja do tipo `Resource`, o **tipo real na memória** é a subclasse correta.
+
+
+## 📌 **O que é a anotação `@Polymorphism`**
+
+No Hibernate, quando se usa herança (`SINGLE_TABLE`, `JOINED` ou `TABLE_PER_CLASS`), uma operação polimórfica (ex.: `select r from Resource r`) pode trazer **todas as subclasses** (Video, File, Text) ou apenas a tabela específica.
+
+O `@Polymorphism` **instrui o Hibernate** se ele deve usar SQL polimórfico **ou não**.
+
+
+## ✅ **Tipos**
+
+| Valor                   | O que faz                                                                                                                                                                   |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`IMPLICIT` (padrão)** | Consultas polimórficas consideram todas as subclasses automaticamente. Por exemplo, `select * from Resource` faz `UNION ALL` com as tabelas `Video`, `File`, `Text`.        |
+| **`EXPLICIT`**          | Consultas polimórficas só funcionam **se usar `TREAT` ou consultas explícitas**, caso contrário, Hibernate consulta **somente a tabela específica** (não faz `UNION`). |
 
 
 
+## 🎯 **Onde é útil?**
+
+* No `TABLE_PER_CLASS`, o `IMPLICIT` força o Hibernate a fazer `UNION ALL` em todas as tabelas quando faz uma consulta na superclasse.
+
+  * Isso pode ser pesado.
+* O `EXPLICIT` diz: **não faça `UNION` sozinho**, só traga a tabela base, a menos que eu especifique explicitamente a subclasse.
 
 
 
+## ✅ **Usando na prática**
+
+Aplica-se na **superclasse**, por exemplo:
+
+```java
+@Entity
+@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+@Polymorphism(type = PolymorphismType.EXPLICIT) // ou IMPLICIT (padrão)
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@SuperBuilder
+public class Resource {
+    @Id
+    @GeneratedValue(strategy = GenerationType.TABLE)
+    private Integer id;
+
+    private String name;
+    private int size;
+    private String url;
+}
+```
+
+
+## ⚡ **Como funciona na prática**
+
+| Cenário                                    | `IMPLICIT`                                                | `EXPLICIT`                                                          |
+| ------------------------------------------ | --------------------------------------------------------- | ------------------------------------------------------------------- |
+| `select r from Resource r`                 | Faz `UNION` de todas as tabelas (`Video`, `File`, `Text`) | Consulta **só** `Resource` (não acha `Video` nem `File` nem `Text`) |
+| `select v from Video v`                    | Consulta só `Video`                                       | Consulta só `Video`                                                 |
+| `select treat(r as Video) from Resource r` | Consulta `Video` dentro de `Resource`                     | Consulta `Video` explicitamente                                     |
 
 
 
+## ⚙️ **Quando usar**
+
+✅ **IMPLICIT (padrão)**
+
+* Conveniente: consultas polimórficas automáticas.
+* Bom se você sempre quer ver todos os tipos.
+
+✅ **EXPLICIT**
+
+* Evita `UNION ALL` automático (que pode ser pesado com muitas tabelas).
+* Você tem controle total para decidir **quando** fazer consultas polimórficas (via `TREAT` ou JOIN).
 
 
+
+## 🔑 **Resumo para a minha estrutura**
+
+**Para `TABLE_PER_CLASS`**, é comum deixar o `IMPLICIT` no começo:
+
+```java
+@Polymorphism(type = PolymorphismType.IMPLICIT) // ou omita, é o default
+```
+
+Se o meu projeto tiver **muitas subclasses** e performance virar problema, teste `EXPLICIT`:
+
+```java
+@Polymorphism(type = PolymorphismType.EXPLICIT)
+```
+
+E aí consulte `Video`, `File` e `Text` **diretamente**, ou use `TREAT`.
+
+
+## ✅ **Exemplo com `EXPLICIT` + `TREAT`**
+
+```java
+// Vai buscar só Resource, NÃO faz UNION
+select r from Resource r
+
+// Vai buscar só Video dentro de Resource
+select treat(r as Video) from Resource r
+```
+
+## Se especificar o `@Polymorphism` na subclasse?
+
+### ✅ **Regra principal**
+
+* O `@Polymorphism` só faz sentido na **classe que está no `FROM` da consulta**.
+* Na prática, **o Hibernate só usa `@Polymorphism` da superclasse** quando resolve a consulta polimórfica.
+* Se aplicar `@Polymorphism` **na subclasse**, Hibernate **ignora** — porque a subclasse **não é polimórfica** por si só. É apenas um nó da hierarquia.
+
+
+### 📌 **Exemplo**
+
+Supondo:
+
+✅ **Classe Resource**
+```java
+@Entity
+@Inheritance(strategy = InheritanceType.TABLE_PER_CLASS)
+@Polymorphism(type = PolymorphismType.EXPLICIT)
+public class Resource { ... }
+```
+
+✅ **Classe Video**
+```java
+@Entity
+@Polymorphism(type = PolymorphismType.IMPLICIT)  // <- colocado na subclasse
+public class Video extends Resource { ... }
+```
+
+### 👉 E você faz:
+
+```jpql
+select r from Resource r
+```
+
+**Resultado:**
+➡️ Vale o `@Polymorphism` da **classe `Resource`** → ou seja, `EXPLICIT`.
+Então Hibernate **NÃO faz `UNION` automático**.
+
+O `@Polymorphism` na `Video` **não afeta nada**, pois não é a entidade principal da consulta polimórfica.
+
+
+### ✅ **Se consultar a subclasse diretamente:**
+
+```jpql
+select v from Video v
+```
+
+➡️ Aqui o Hibernate só faz `SELECT * FROM video_tbl`.
+Não tem polimorfismo nesse caso: é uma tabela concreta só.
+
+
+### 📌 **Resumo prático**
+
+| Onde usar `@Polymorphism`? | Efeito                         |
+| -------------------------- | ------------------------------ |
+| **Superclasse da herança** | ✅ Controla `UNION` polimórfico |
+| Subclasse isolada          | ❌ Não faz nada prático         |
+
+
+### 🚀 **Regra de ouro**
+
+> 🔑 **Usar `@Polymorphism` apenas na superclasse abstrata ou raiz da hierarquia.**
+
+Assim você controla **como consultas como `select r from Resource r`** se comportam:
+
+* `IMPLICIT` → faz `UNION` automático.
+* `EXPLICIT` → não faz `UNION` automático.
+
+## Testando dentro de um CommandLineRunner
+
+✅ **Classe InheritanceClassExample**
+```java
+@Component
+public class InheritanceClassExample implements CommandLineRunner {
+
+    @Autowired
+    private VideoRepository videoRepository;
+
+    @Autowired
+    private FileRepository fileRepository;
+
+    @Autowired
+    private TextRepository textRepository;
+
+    @Autowired
+    private ResourceRepository resourceRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        var video = Video.builder()
+                .name("Video 1")
+                .size(15)
+                .url("video1.com")
+                .length(5)
+                .build();
+
+        var file = File.builder()
+                .name("File 1")
+                .size(5)
+                .url("file1.com")
+                .type("png")
+                .build();
+
+        var text = Text.builder()
+                .name("Text 1")
+                .size(10)
+                .url("text1.com")
+                .content("Este é um arquivo de texto.")
+                .build();
+
+        videoRepository.save(video);
+        fileRepository.save(file);
+        textRepository.save(text);
+
+        System.out.println("Nome do vídeo: " + video.getName() + " - Duração: " + video.getLength());
+        System.out.println("Nome do Arquivo: " + file.getName() + " - Tipo: " + file.getType());
+        System.out.println("Nome do Arquivo: " + text.getName() + " - Conteúdo: " + text.getContent());
+
+        
+        // Exemplo utilizando Polimorfismo no Hibernate
+
+        // 1) Consulta Polimórfica (EXPLICIT): Isso não traz as subclasses
+        System.out.println("\n=== Consulta Resource ===");
+        List<Resource> resources = resourceRepository.findAll();
+        resources.forEach(System.out::println);  // Vai trazer somente Resource se existir - não traz Video, File e Text!
+
+
+        // (2) Consulta explícita usando JPQL + TREAT
+        System.out.println("\n=== Consulta Polimórfica usando TREAT - CONSULTA VIDEO ===");
+        List<Video> videos = entityManager.createQuery(
+                "SELECT TREAT(r AS Video) FROM Resource r WHERE TYPE(r) = Video",
+                Video.class
+        ).getResultList();
+
+        videos.forEach(System.out::println);
+
+
+        // (3) Consulta explícita de teste com instanceof
+        System.out.println("\n=== Consulta Polimórfica usando INSTANCEOF ===");
+        List<Resource> resources2 = resourceRepository.findAll();
+        
+        for(Resource resource : resources2) {
+                System.out.println("Id: " + resource.getId() + " | Name: " + resource.getName());
+
+                // Polimorfismo qual é o tipo real?
+                if (resource instanceof Video) {
+                        System.out.println("É um vídeo! Length: " + ((Video) resource).getLength());  // Utilizando Cast Video para acessar o método getLength()
+                } else if (resource instanceof File) {
+                        System.out.println("É um File! Type: " + ((File) resource).getType());  // Utilizando Cast File para acessar o método getType()
+                } else if (resource instanceof Text) {
+                        System.out.println("É um Text! Content: " + ((Text) resource).getContent());  // Utilizando Text para acessar o método getContent()
+                } else {
+                        System.out.println("Tipo desconhecido!");
+                }
+                System.out.println("-----------------------------------");
+        }
+    }
+}
+```
+
+### ✅ O que este exemplo mostra
+
+| Parte                          | O que demonstra                                           |
+| ------------------------------ | --------------------------------------------------------- |
+| `videoRepository.save` etc     | Insere **cada tipo na sua tabela separada**               |
+| `resourceRepository.findAll()` | **NÃO traz `Video` nem `File`** (por causa de `EXPLICIT`) |
+| `JPQL TREAT`                   | Consulta polimórfica explicitamente                       |
+
+### 🔑 Resumo
+✅ Com @Polymorphism(EXPLICIT):
+
+  - O Hibernate não faz UNION automático na superclasse.
+
+  - Você precisa ser explícito: usar TREAT ou consultar direto Video, File, Text.
+
+## Supondo Superclasse agora com implicit
+
+✅ **Classe InheritanceClassExample**
+```java
+@Component
+public class InheritanceClassExample implements CommandLineRunner {
+
+    @Autowired
+    private VideoRepository videoRepository;
+
+    @Autowired
+    private FileRepository fileRepository;
+
+    @Autowired
+    private TextRepository textRepository;
+
+    @Autowired
+    private ResourceRepository resourceRepository;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        var video = Video.builder()
+                .name("Video 1")
+                .size(15)
+                .url("video1.com")
+                .length(5)
+                .build();
+
+        var file = File.builder()
+                .name("File 1")
+                .size(5)
+                .url("file1.com")
+                .type("png")
+                .build();
+
+        var text = Text.builder()
+                .name("Text 1")
+                .size(10)
+                .url("text1.com")
+                .content("Este é um arquivo de texto.")
+                .build();
+
+        videoRepository.save(video);
+        fileRepository.save(file);
+        textRepository.save(text);
+
+        System.out.println("Nome do vídeo: " + video.getName() + " - Duração: " + video.getLength());
+        System.out.println("Nome do Arquivo: " + file.getName() + " - Tipo: " + file.getType());
+        System.out.println("Nome do Arquivo: " + text.getName() + " - Conteúdo: " + text.getContent());
+
+        
+        // Exemplo utilizando Polimorfismo no Hibernate
+
+        // AGORA O PONTO-CHAVE: buscar polimorficamente direto do Resource!
+        System.out.println("\n=== Consulta Resource ===");
+        List<Resource> resources = resourceRepository.findAll(); // COM IMPLICIT, faz UNION AUTOMÁTICO!
+        resources.forEach(System.out::println);
+
+        // Consulta específica ainda funciona
+        System.out.println("\n=== Consulta só Videos ===");
+        List<Video> videos = videoRepository.findAll();
+        videos.forEach(System.out::println);
+
+    }
+}
+```
+
+### 📌 O que muda aqui
+
+| IMPLICIT                                                                           | EXPLICIT                                                                |
+| ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **`resourceRepository.findAll()` faz `UNION` automático** de `Video + File + Text` | `resourceRepository.findAll()` NÃO faz `UNION` (só busca Resource puro) |
+| Não precisa `TREAT` para usar polimorfismo                                         | Precisa `TREAT` para buscar filhos                                      |
+| Mais prático para queries genéricas                                                | Mais controle para queries complexas                                    |
+
+
+## A anotação `@Polymorphism` só é específica para estratégia de herança `TABLE_PER_CLASS`?
+
+### ✅ **1️⃣ A anotação `@Polymorphism` é específica do Hibernate**
+
+* **`@Polymorphism` NÃO faz parte do JPA padrão** — é uma extensão do Hibernate.
+* Serve para **controlar como o Hibernate executa consultas polimórficas** (ou seja, consultas na superclasse que retornam instâncias de subclasses).
+
+
+### ✅ **2️⃣ Só faz diferença prática em `TABLE_PER_CLASS`**
+
+#### ➤ **Por que?**
+
+* Em `SINGLE_TABLE`:
+
+  * Todas as subclasses estão na **mesma tabela única**, então o polimorfismo é **implícito** e natural — Hibernate só filtra pela coluna discriminadora (`DTYPE`).
+  * Não faz sentido controlar `UNION` porque não existe mais de uma tabela.
+
+* Em `JOINED`:
+
+  * Existe uma tabela base + tabelas de detalhes, mas o Hibernate faz `JOIN` para montar o objeto completo.
+  * O polimorfismo já depende do `JOIN`. Controlar `UNION` não se aplica aqui — o mapeamento de JOIN resolve.
+
+* Em `TABLE_PER_CLASS`:
+
+  * **Cada subclasse é uma tabela independente, sem tabela comum**.
+  * Então, para consultar a superclasse, o Hibernate **precisa decidir se vai executar um `UNION` de todas as tabelas concretas** ou não.
+  * Aqui o `@Polymorphism` faz diferença:
+
+    * `IMPLICIT` = faz o `UNION` sozinho.
+    * `EXPLICIT` = não faz o `UNION` sozinho; você precisa especificar.
+
+👉 Por isso, **só no `TABLE_PER_CLASS` faz diferença prática**.
+
+
+### ✅ **3️⃣ Resumo**
+
+| Estratégia        | `@Polymorphism` faz sentido? | Por quê?                                                 |
+| ----------------- | ---------------------------- | -------------------------------------------------------- |
+| `SINGLE_TABLE`    | **Não**                      | Tudo numa tabela só, filtrado por coluna discriminadora. |
+| `JOINED`          | **Não**                      | Hibernate faz `JOIN` para montar herança.                |
+| `TABLE_PER_CLASS` | **Sim!**                     | Precisa decidir se vai `UNION` ou não entre tabelas.     |
+
+
+### ✅ **4️⃣ Conclusão**
+
+✔️ **Use `@Polymorphism` só quando estiver usando `TABLE_PER_CLASS`** e quiser controlar explicitamente como o Hibernate faz queries na hierarquia.
+
+
+## ⚡ **Dica**
+
+Se estiver usando `TABLE_PER_CLASS`:
+
+* **Se quer conveniência:** deixe `IMPLICIT` (ou omita, é o default).
+* **Se quer performance ou controle fino:** use `EXPLICIT` + `TREAT` ou consultas específicas.
 
 
 
