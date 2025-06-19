@@ -2872,6 +2872,241 @@ Se estiver usando `TABLE_PER_CLASS`:
 * **Se quer conveniência:** deixe `IMPLICIT` (ou omita, é o default).
 * **Se quer performance ou controle fino:** use `EXPLICIT` + `TREAT` ou consultas específicas.
 
+---
+---
+
+# Campos Compostos e Chave Primária Composta 
+
+Existem **dois conceitos muito importantes do JPA** para trabalhar com **componentes incorporados (embedded)**:
+
+* 👉 **`@Embeddable` + `@Embedded`** → Para **campos compostos não-chave** (endereços, contatos, etc.)
+* 👉 **`@Embeddable` + `@EmbeddedId`** → Para **definir uma chave primária composta (Composite Primary Key)**
+
+## ✅ **1️⃣ O que foi feito**
+
+### 📌 **(A)** `OrderId` como chave composta
+
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Embeddable
+public class OrderId implements Serializable {
+
+    private String username;
+    private LocalDateTime orderDate;
+}
+```
+
+* `@Embeddable`: diz ao JPA que esta classe **não é uma entidade**, mas sim um **tipo incorporável**.
+* Implementa `Serializable`: **obrigatório** para chave composta funcionar no JPA.
+* Campos simples: `username` + `orderDate` => **representam a chave única do pedido**.
+
+
+### 📌 **(B)** `Address` como objeto incorporado
+
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Embeddable
+public class Address {
+
+    private String streetName;
+    private String houseNumber;
+    private String zipCode;
+}
+```
+
+* Outro `@Embeddable`, mas **não faz parte da chave primária**.
+* Usado apenas como **campo composto**, incorporado na tabela do `Order`.
+
+
+### 📌 **(C)** `Order` usando ambos
+
+```java
+@Entity
+@Table(name = "ORDER_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class Order {
+
+    @EmbeddedId
+    private OrderId orderId;    // Chave primária composta
+
+    @Embedded
+    private Address address;    // Objeto incorporado
+
+    @Column(name = "order_info")
+    private String orderInfo;
+
+    @Column(name = "another_field")
+    private String anotherField;
+}
+```
+
+* `@EmbeddedId`: **indica a chave primária composta**.
+* `@Embedded`: inclui os campos do `Address` como **colunas na mesma tabela**.
+* Campos extras complementam os dados do pedido.
+
+---
+
+## ✅ **2️⃣ Resumo do comportamento**
+
+| Anotação      | Para que serve?                                                   |
+| ------------- | ----------------------------------------------------------------- |
+| `@Embeddable` | Marca a classe como **componente embutível** (sem tabela própria) |
+| `@EmbeddedId` | Usa um `@Embeddable` como **chave primária composta**             |
+| `@Embedded`   | Usa um `@Embeddable` como **campo composto normal**               |
+
+---
+
+## ✅ **3️⃣ Como isso vira tabela**
+
+Com a minha classe `Order`:
+
+* No banco, a tabela `ORDER_TBL` fica mais ou menos assim:
+
+  ```sql
+  CREATE TABLE ORDER_TBL (
+    username VARCHAR,
+    order_date DATETIME,
+    street_name VARCHAR,
+    house_number VARCHAR,
+    zip_code VARCHAR,
+    order_info VARCHAR,
+    another_field VARCHAR,
+    PRIMARY KEY (username, order_date)
+  );
+  ```
+
+Ou seja:
+
+* Os campos do `OrderId` viram colunas que compõem a PK.
+* Os campos do `Address` viram colunas adicionais na mesma tabela.
+
+---
+
+## ✅ **4️⃣ Boas práticas para `@EmbeddedId`**
+
+✔️ **Implemente `equals()` e `hashCode()` corretamente** no `OrderId` — o Lombok `@Data` gera isso, mas verifique que é com base em todos os campos da PK.
+
+✔️ **Implemente `Serializable`** — é obrigatório para chave composta.
+
+✔️ **Prefira tipos imutáveis** ou final para PK se possível.
+
+---
+
+## ✅ **5️⃣ Usando na prática**
+
+✅ `Repositorio OrderRepository`
+```java
+@Repository
+public interface OrderRepository extends JpaRepository<Order, OrderId>{
+
+    /* OBSERVAÇÃO: o tipo da PK JpaRepository é OrderId */
+
+    // Buscar todos os pedidos pelo username
+    @Query("SELECT o FROM Order o WHERE o.orderId.username = :username")
+    List<Order> findByUsername(@Param("username") String username);
+
+    // Buscando endereço pelo zipCode
+    @Query("SELECT o FROM Order o WHERE o.address.zipCode = :zipCode")
+    List<Order> findByZipCode(@Param("zipCode") String zipCode);
+    
+}
+```
+
+✅ `EmbeddableClassExample`
+
+- **Exemplos de uso**:
+    - 1️⃣ Consultar por ID composto inteiro
+    - 2️⃣ Consultar por parte da chave (exemplo: só username)
+    - 3️⃣ Consultar por campo específico `@Embedded` (exemplo: só zipCode do Address)
+
+```java
+@Component
+public class EmbeddableClassExample implements CommandLineRunner{
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        // 1) Exemplo 1 - Consultar por Id composto inteiro
+        System.out.println("\n=== Consultar por Id composto inteiro ===");
+
+        // Criando o ID Composto
+        OrderId id = new OrderId("Daniel", LocalDateTime.now());
+
+        // Criando um endereço
+        Address address = new Address("Rua A", "123", "99999-999");
+
+        // Criando um pedido
+        Order order = new Order(id, address, "Pedido de Teste", "Outro campo");
+
+        // salvando no BD
+        orderRepository.save(order);
+
+        System.out.println("Pedido salvo no banco com ID: " + id);
+
+        Optional<Order> optionalOrder = orderRepository.findById(id);
+        optionalOrder.ifPresent(o -> System.out.println(
+            "Pedido Encontrado - Nome: " + o.getOrderId().getUsername()
+            + " | Data: " + o.getOrderId().getOrderDate()
+            + " | Info: " + o.getOrderInfo()
+        ));
+
+
+        // 2) Exemplo 2 - Consultar por parte da chave (exemplo: só username)
+        System.out.println("\n=== Consultar por parte da chave (exemplo: só username) ===");
+
+        List<Order> orders = orderRepository.findByUsername("Daniel");
+        
+        orders.forEach(o -> System.out.println(
+            "Buscando por parte da chave username - Nome: " + o.getOrderId().getUsername()
+            + " | Data: " + o.getOrderId().getOrderDate()
+            + " | Info: " + o.getOrderInfo()
+        ));
+
+
+        // 3) Exemplo 3 - Consultar usando o campo @Embedded (ex: zipCode do Address)
+        System.out.println("\n=== Consultar usando o campo @Embedded (ex: zipCode do Address) ===");
+
+        List<Order> ordersZipCode = orderRepository.findByZipCode("99999-999");
+
+        ordersZipCode.forEach(o -> System.out.println(
+            "Buscando por zipCode - Nome: " + o.getOrderId().getUsername()
+            + " | Endereço: " + o.getAddress().getStreetName() 
+            + " | Número da Casa: " + o.getAddress().getHouseNumber()
+            + " | CEP: " + o.getAddress().getZipCode()
+        ));
+
+    }
+    
+}
+```
+
+### ✅ Resumo
+
+| O que fazer                 | Como fazer                |
+| --------------------------- | ------------------------- |
+| **Chave composta inteira**  | `findById(OrderId)`       |
+| **Parte da chave composta** | JPQL: `o.orderId.username`|
+| **Campo do @Embedded**      | JPQL: `o.address.zipCode` |
+
+
+## 🚀 **Resumo final**
+
+* `@EmbeddedId` para chave composta
+* `@Embedded` para campo incorporado
+
+📌 **Chave composta = identidade da linha**
+
+📌 **Campo incorporado = modela atributos complexos sem criar outra tabela**
 
 
 
