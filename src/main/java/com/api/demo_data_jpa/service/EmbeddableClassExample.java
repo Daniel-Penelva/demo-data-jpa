@@ -6,7 +6,7 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
+//import org.springframework.stereotype.Component;
 
 import com.api.demo_data_jpa.model.embedded.Address;
 import com.api.demo_data_jpa.model.embedded.Order;
@@ -15,7 +15,7 @@ import com.api.demo_data_jpa.repository.OrderRepository;
 
 import jakarta.transaction.Transactional;
 
-@Component
+//@Component
 public class EmbeddableClassExample implements CommandLineRunner{
 
     @Autowired

@@ -3108,6 +3108,472 @@ public class EmbeddableClassExample implements CommandLineRunner{
 
 📌 **Campo incorporado = modela atributos complexos sem criar outra tabela**
 
+---
+---
+
+# Consultas Derivadas (JPQL)
+
+## 📌 **1️⃣ O que são consultas derivadas**
+
+No Spring Data JPA, **consultas derivadas** são **métodos do repositório** que o Spring entende e transforma automaticamente em SQL/JPQL **baseado no nome do método**.
+
+Você não escreve JPQL nem `@Query` — o Spring faz isso para você.
+
+
+## 🎯 **2️⃣ Como funciona**
+
+### ✅ **Sintaxe básica**
+
+* `findBy` → retorna **1 ou mais registros** que atendem à condição.
+* `findAllBy` → igual ao `findBy`, mas semântico: enfatiza que espera **vários resultados**.
+* `countBy` → retorna um **número** (quantos registros atendem à condição).
+* `existsBy` → retorna **true/false** se existir ou não.
+
+### 📌 **Regras**
+
+* O nome do **atributo** na entidade deve ser igual ao nome no método (case-insensitive).
+* Pode usar `And`, `Or`, `Between`, `GreaterThan`, `Like`, `In` etc.
+
+
+
+## ✅ **3️⃣ Usando com a entidade `Author`**
+
+### **Entidade - `Author`**
+
+```java
+@Entity
+@Table(name = "AUTHOR_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Builder
+public class Author {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    private String firstName;
+    private String lastName;
+    private String email;
+    private int age;
+}
+```
+
+---
+
+### ✅ **Repositório - `AuthorRepository`**
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer>{
+
+    // SQL: SELECT * FROM author WHERE email = 'daniel@gmail.com'
+    // JPQL: SELECT a FROM Author a WHERE a.email = :email
+    // Buscar un autor por email
+    Author findByEmail(String email);
+
+    // SQL: SELECT * FROM author WHERE first_name = "Daniel";
+    // JPQL: SELECT a FROM Author a WHERE a.first_name = :first_name
+    // Equivalente a List<Author> findByFirstName(String firstName);
+    // Buscar por nome exato
+    List<Author> findAllByFirstName(String firstName);
+
+    // SQL: SELECT * FROM author WHERE first_name = "Daniel"
+    // JPQL: SELECT a FROM Author a WHERE a.first_name = :first_name
+    // Buscar por nome exato ignorando letras maiúsculas e minúsculas.
+    List<Author> findByFirstNameIgnoreCase(String firstName);
+
+    // SQL: SELECT * FROM author WHERE first_name = "Daniel"
+    // JPQL: SELECT a FROM Author a WHERE a.first_name = :keyword
+    // Buscar por nome contendo o nome ignorando letras maiúsculas e minúsculas - utiliza o operador LiKE '%Dan%'. 
+    List<Author> findByFirstNameContainingIgnoreCase(String keyword);
+
+    // SQL: SELECT * FROM author WHERE first_name LIKE 'Dan%'
+    // JPQL: SELECT a FROM Author a WHERE a.first_name LIKE :keyword
+    // Buscar por todos com nome começando com a palavra "Dan" (LiKE 'Dan%') ignorando letras maiúsculas e minúsculas.
+    List<Author> findByFirstNameStartsWithIgnoreCase(String prefix);
+
+    // SQL: SELECT * FROM author WHERE first_name LIKE '%Dan'
+    // JPQL: SELECT a FROM Author a WHERE a.first_name LIKE :prefix 
+    // Buscar por todos com nome terminando com a palavra "Dan" (LiKE '%Dan') ignorando letras maiúsculas e minúsculas.
+    List<Author> findByFirstNameEndsWithIgnoreCase(String prefix);
+
+    // SQL: SELECT * FROM Author WHERE first_name in('daniel', 'ped', 'marc')
+    // JPQL: SELECT a FROM Author a WHERE a.first_name IN (:firstNames)
+    // Buscar por nome exato utilizando uma lista de valores 
+    List<Author> findByFirstNameInIgnoreCase(List<String> firstNames);
+
+    // SQL: SELECT * FROM Author WHERE first_name = "Daniel" OR last_name = "Penelva";
+    // JPQL: SELECT a FROM Author a WHERE a.first_name = :first_name OR a.last_name = :last_name;
+    // Buscar por nome exato ou por sobrenome exato ignorando letras maiúsculas e minúsculas.
+    List<Author> findByFirstNameOrLastNameIgnoreCase(String firstname, String lastname);
+
+    // SQL: SELECT * FROM Author WHERE age > 30;
+    // JPQL: SELECT a FROM Author a WHERE a.age > :age;
+    // Buscar por idade maior que...
+    List<Author> findByAgeGreaterThan(int age);
+    
+    // SQL: SELECT * FROM Author WHERE age BETWEEN 30 AND 40;
+    // JPQL: SELECT a FROM Author a WHERE a.age BETWEEN :start AND :end;
+    // Buscar por idade entre...
+    List<Author> findByAgeBetween(int start, int end);
+
+    // SQL: SELECT * FROM author WHERE email = "gmail"
+    // JPQL: SELECT a FROM Author a WHERE a.email LIKE :keyword
+    // Buscar por email contendo...
+    List<Author> findByEmailContaining(String keyword);
+
+    // SQL: SELECT * FROM author WHERE EXISTS (SELECT email FROM author WHERE email = "gmail")
+    // JPQL: SELECT a FROM Author a WHERE EXISTS (SELECT b FROM Author b WHERE b .email = :email)
+    // Verificar se existe autor com email.
+    boolean existsByEmail(String email);
+
+    // SQL: SELECT COUNT(age) FROM author
+    // JPQL: SELECT COUNT(a.age) FROM Author a
+    // Contar autores com idade maior que...
+    long countByAgeGreaterThan(int age);
+
+    // SQL: SELECT COUNT(age) FROM author
+    // JPQL: SELECT COUNT(a.age) FROM Author a
+    // Contar autores com idade maior ou igual a...
+    long countByAgeGreaterThanEqual(int age);
+
+    // Buscar todos com o nome começando com...
+    // SQL: SELECT * FROM author WHERE first_name LIKE 'Dan%'
+    // JPQL: SELECT a FROM Author a WHERE a.first_name LIKE :prefix
+    // Buscar todos com o nome começando com...
+    List<Author> findAllByFirstNameStartingWith(String prefix);
+}
+```
+
+### ✅ **Testando - `testDerivedQueries`**
+
+```java
+@Component
+public class testDerivedQueries implements CommandLineRunner {
+
+    private final FileRepository fileRepository;
+
+    private final DemoDataJpaApplication demoDataJpaApplication;
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    testDerivedQueries(DemoDataJpaApplication demoDataJpaApplication, FileRepository fileRepository) {
+        this.demoDataJpaApplication = demoDataJpaApplication;
+        this.fileRepository = fileRepository;
+    }
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        var author1 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Penelva")
+                .email("daniel@gmail.com")
+                .age(37)
+                .build();
+
+        var author2 = Author.builder()
+                .firstName("Marcelo")
+                .lastName("Silva")
+                .email("marcelo@gmail.com")
+                .age(35)
+                .build();
+
+        var author3 = Author.builder()
+                .firstName("Pedro")
+                .lastName("Mota")
+                .email("pedro@gmail.com")
+                .age(27)
+                .build();
+
+        var author4 = Author.builder()
+                .firstName("Maria")
+                .lastName("Nunes")
+                .email("maria@gmail.com")
+                .age(31)
+                .build();
+
+        // Salvando os autores
+        authorRepository.save(author1);
+        authorRepository.save(author2);
+        authorRepository.save(author3);
+        authorRepository.save(author4);
+
+        // Criando uma lista de Autores
+        List<Author> authors = new ArrayList<>();
+
+        // Adicionando os autores numa lista de Autores
+        authors.add(author1);
+        authors.add(author2);
+        authors.add(author3);
+        authors.add(author4);
+
+        // Gerar uma lista de autores
+        System.out.println("=== Criando Autor ===");
+        authors.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | Sobrenome: " + a.getLastName()
+                + " | Email: " + a.getEmail()
+                + " | Idade: " + a.getAge()));
+
+        // 1) Buscar un autor por email
+        System.out.println("\n=== Buscar Autor por Email ===");
+        var authorByEmail = authorRepository.findByEmail("marcelo@gmail.com");
+        System.out.println("Dados do Autor - Nome: " + authorByEmail.getFirstName()
+                + " | E-mail: " + authorByEmail.getEmail());
+
+        
+        // 2) Buscar por nome exato
+        System.out.println("\n=== Buscar por nome exato ===");
+
+        List<Author> authorsByName = authorRepository.findAllByFirstName("Daniel");
+        authorsByName.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()));
+
+        
+        // 3) Buscar por nome exato ignorando letras maiúsculas e minúsculas
+        System.out.println("\n=== Buscar por nome exato ignorando letras maiúsculas");
+        List<Author> authorsByNameIgnoringCase = authorRepository.findByFirstNameIgnoreCase("maria");
+        authorsByNameIgnoringCase.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()));
+
+
+        // 4) Buscar por nome contendo o nome ignorando letras maiúsculas e minúsculas
+        System.out.println("\n=== Buscar por nome contendo o nome e ignorando letras maiúsculas e minúsculas");
+        List<Author> authorsByNameContaining = authorRepository.findByFirstNameContainingIgnoreCase("ma");
+        if (authorsByNameContaining != null && !authorsByNameContaining.isEmpty()) {
+            authorsByNameContaining.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()));
+        } else {
+            System.out.println("Nenhum autor encontrado");
+        }
+
+
+        // 5) Buscar por todos os nomes começando com a palavra "m" (LiKE 'm%') ignorando letras maiúsculas e minúsculas.
+        System.out.println("\n=== Buscar por todos os nomes começando com a(s) letra(s) e ignorando letras maiúsculas e minúsculas");
+        List<Author> authorsByNameStartingWith = authorRepository.findByFirstNameStartsWithIgnoreCase("p");
+        if (authorsByNameStartingWith != null && !authorsByNameStartingWith.isEmpty()) {
+            authorsByNameStartingWith.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()));
+        } else {
+            System.out.println("Nenhum autor encontrado");
+        }
+
+
+        // 6) Buscar por todos com nome terminando com a palavra "o" e ignorando letras maiúsculas e minúsculas.
+        System.out.println("\n=== Buscar por todos com nome terminando a(s) letra(s) e ignorando letras maiúsculas e minúsculas.");
+        List<Author> authorsByNameEndingWith = authorRepository.findByFirstNameEndsWithIgnoreCase("o");
+        if (authorsByNameEndingWith != null && !authorsByNameEndingWith.isEmpty()) {
+            authorsByNameEndingWith.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()));
+        } else {
+            System.out.println("Nenhum autor encontrado");
+        }
+
+
+        // 7) Buscar por nome exato utilizando uma lista de valores
+        System.out.println("\n=== Buscar por nome exato utilizando uma lista de valores");
+        List<String> names = Arrays.asList("Daniel", "Maria");
+        List<Author> authorsByNameIn = authorRepository.findByFirstNameInIgnoreCase(names);
+        if (authorsByNameIn != null && !authorsByNameIn.isEmpty()) {
+            authorsByNameIn.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()));
+        } else {
+            System.out.println("Nenhum autor encontrado");
+        }
+
+
+        // 8) Buscar por nome exato ou por sobrenome exato ignorando letras maiúsculas e minúsculas.
+        System.out.println("\n=== Buscar por nome exato ou por sobrenome exato ignorando letras maiúsculas e minúsculas.");
+        List<Author> authorsByNameOrLastName = authorRepository.findByFirstNameOrLastNameIgnoreCase("daniel", "penelva");
+        if (authorsByNameOrLastName != null && !authorsByNameOrLastName.isEmpty()) {
+            authorsByNameOrLastName.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()));
+        } else {
+            System.out.println("Nenhum autor encontrado");
+        }
+
+
+        // 9) Buscar por idade maior que...
+        System.out.println("\n === Buscar por idade maior que...");
+        List<Author> authorsByAgeGreaterThan = authorRepository.findByAgeGreaterThan(30);
+        if (authorsByAgeGreaterThan != null && !authorsByAgeGreaterThan.isEmpty()) {
+            authorsByAgeGreaterThan.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()
+                + " | Idade: " + a.getAge()));
+        } else {
+            System.out.println("Nenhum autor encontrado");
+        }
+
+
+        // 10) Buscar por idade entre...
+        System.out.println("\n === Buscar por idade entre...");
+        List<Author> authorsByAgeBetween = authorRepository.findByAgeBetween(20, 35);
+        if (authorsByAgeBetween != null && !authorsByAgeBetween.isEmpty()) {
+            authorsByAgeBetween.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()
+                + " | Idade: " + a.getAge()));
+        } else {
+            System.out.println("Nenhum autor encontrado");
+        }
+
+
+        // 11) Buscar por email contendo...
+        System.out.println("\n === Buscar por email contendo...");
+        List<Author> authorsByEmailContaining = authorRepository.findByEmailContaining("gmail.com");
+        if (authorsByEmailContaining != null && !authorsByEmailContaining.isEmpty()) {
+            authorsByEmailContaining.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()
+                + " | E-mail: " + a.getEmail()));
+        } else {
+            System.out.println("Nenhum autor encontrado");
+        }
+
+
+        // 12) Verificar se existe autor com email.
+        System.out.println("\n === Verificar se existe autor com email.");
+        boolean existsAuthorByEmail = authorRepository.existsByEmail("davi.@gmail.com");
+        if (!existsAuthorByEmail){
+            System.out.println("NÃO EXISTE autor com o e-mail");
+        } else {
+            System.out.println("Existe autor com o e-mail");
+        }
+
+
+        // 13) Contar autores com idade maior que...
+        System.out.println("\n === Contar autores com idade maior que...");
+        Long countAuthors = authorRepository.countByAgeGreaterThan(30);
+        if (countAuthors == 0) {
+            System.out.println("NÃO FOI ENCONTRADO autores com idade maior que 35 anos!");
+        } else {
+            System.out.println("FOI ENCONTRADO " + countAuthors + " autor(es) com idade maior que 35 anos!");
+        }
+
+        /*Então: 
+         *  Daniel (37) -> 37 é maior que 35 = 1
+         *  Marcelo (35) -> 35 é maior que 35 = 1
+         *  Pedro (27) -> 27 é menor que 30 = 0
+         *  Maria (31) -> 30 é maior que 36 = 1 
+         *                                     / 3 autores ao todo
+        */
+
+
+        // 14) Contar autores com idade maior ou igual a...
+        System.out.println("\n === Contar autores com idade maior ou igual a...");
+        Long countAuthors2 = authorRepository.countByAgeGreaterThanEqual(35);
+        if (countAuthors2 == 0) {
+            System.out.println("NÃO FOI ENCONTRADO autores com idade maior que 35 anos!");
+        } else {
+            System.out.println("FOI ENCONTRADO " + countAuthors2 + " autor(es) com idade maior ou igual que 35 anos!");
+        }
+
+        /*Então: 
+         *  Daniel (37) -> 37 é maior que 35 = 1
+         *  Marcelo (35) -> 35 é igual a 35 = 1
+         *  Pedro (27) -> 27 é menor que 35 = 0
+         *  Maria (31) -> 30 é menor que 35 = 0 
+         *                                     / 2 autores ao todo
+        */
+
+
+        // 15) Buscar todos com o nome começando com...
+        System.out.println("\n === Buscar todos com o nome começando com...");
+        List<Author> authorsByFirstNameStartingWith = authorRepository.findAllByFirstNameStartingWith("M");
+        if (authorsByFirstNameStartingWith.isEmpty()) {
+            System.out.println("NÃO FOI ENCONTRADO autor com o nome começando com M");
+        } else {
+            authorsByFirstNameStartingWith.forEach(a -> System.out.println("Dados do Autor - Nome: " + a.getFirstName()));
+            System.out.println("FOI ENCONTRADO " + authorsByFirstNameStartingWith.size() + " autor(es) com o nome começando com M");
+        }
+        
+        
+    }
+
+}
+```
+
+## ✅ **4️⃣ Diferença `findBy` vs `findAllBy`**
+
+✔️ **`findBy`**
+
+* Serve para 1 ou vários resultados.
+* Retorna `Optional<Author>` se for algo único (ex: `findByEmail`).
+* Ou `List<Author>` se puder ter vários.
+
+✔️ **`findAllBy`**
+
+* Semântico: deixa claro que espera **vários registros**.
+* Não muda nada no SQL, só ajuda a clareza.
+
+Exemplo:
+
+```java
+List<Author> findAllByAgeGreaterThan(int age);
+```
+
+É igual a:
+
+```java
+List<Author> findByAgeGreaterThan(int age);
+```
+
+---
+
+## ✅ **5️⃣ Dica de boas práticas**
+
+✔️ Para buscar 1 registro único:
+
+```java
+Optional<Author> findByEmail(String email);
+```
+
+✔️ Para buscar vários registros:
+
+```java
+List<Author> findAllByFirstName(String firstName);
+```
+
+✔️ Para consultas complexas: usar `@Query`.
+
+
+## ✅ **6️⃣ Palavras-chave mais comuns**
+
+| Palavra        | O que faz   |
+| -------------- | ----------- |
+| `And`          | E           |
+| `Or`           | OU          |
+| `Not`          | NEGAÇÃO     |
+| `Is`           | IGUAL `(=)` |
+| `Equals`       | IGUAL `(=)` |
+| `Between`      | ENTRE       |
+| `LessThan`     | MENOR QUE `(<)`  |
+| `LessThanEqual`| MENOR OU IGUAL QUE `(<=)`   |
+| `GreaterThan`  | MAIOR QUE `(>)`  |
+| `GreaterThanEqual`  | MAIOR OU IGUAL QUE `(>=)`|
+| `After`        | `>` (datas) |
+| `Before`       | `<` (datas) |
+| `Containing`   | LIKE %x%    |
+| `StartingWith` | LIKE x%     |
+| `EndingWith`   | LIKE %x     |
+| `OrderBy`      | ORDER BY    |
+| `IsNull`       | IS NULL     |
+| `IsNotNull`    | IS NOT NULL |
+| `In`           | IN (...)    |
+| `NotIn`        | NOT IN (...)|
+| `IgnoreCase`           | IGNORA MAIÚSCULAS/MINÚSCULAS |
+
+**Por exemplo: `findByFirstNameOrLastNameIgnoreCase`**
+
+## 🚀 **Resumo**
+
+👉 **Consultas derivadas** = menos código = mais legibilidade.
+👉 São ótimas para **filtros simples e diretos**.
+👉 Para consultas mais complexas → use `@Query` ou `Specification`.
+
+IgnoreCase	Ignora maiúsculas/minúsculas
+
+
 
 
 
