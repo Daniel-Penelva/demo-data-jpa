@@ -3573,8 +3573,247 @@ List<Author> findAllByFirstName(String firstName);
 
 IgnoreCase	Ignora maiúsculas/minúsculas
 
+---
+---
+# Faker - Geração de Dados
+
+## ✅ **O que é insert fake data?**
+
+Em um projeto real, você geralmente quer **popular o banco com dados de exemplo** — para:
+
+* testar consultas,
+* validar lógica de negócio,
+* ter registros prontos para desenvolvimento e demonstrações,
+* simular cenários reais com dados realistas.
+
+## ✅ **Dependência do Faker**
+
+🔑 Para usar o **Java Faker**, você precisa adicionar a dependência no seu `pom.xml` (caso use Maven) ou `build.gradle` (se for Gradle).
+
+📦 **Para Maven:**
+
+```xml
+<dependency>
+    <groupId>com.github.javafaker</groupId>
+    <artifactId>javafaker</artifactId>
+    <version>1.0.2</version>
+</dependency>
+```
+
+📦 **Para Gradle:**
+
+```groovy
+implementation 'com.github.javafaker:javafaker:1.0.2'
+```
+
+✅ **Dica:**
+
+* A versão `1.0.2` é a última estável mais usada.
+* Depois de adicionar, execute `mvn install` ou `gradle build` para baixar a lib.
 
 
+## ⚙️ **Maneiras comuns de inserir dados falsos**
+
+### 1️⃣ **Usar `CommandLineRunner`**
+
+Essa é a forma mais direta no Spring Boot:
+VAqui, cria um **bean** que roda **assim que a aplicação inicia** e insere registros no banco.
+
+**Exemplo utilizando entidade `Author`:**
+
+```java
+@Component
+public class AuthorDataSeeder implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    public void run(String... args) throws Exception {
+        if (authorRepository.count() == 0) {
+            // Só insere se estiver vazio, para não duplicar
+            Author author1 = Author.builder()
+                    .firstName("Daniel")
+                    .lastName("Penelva")
+                    .email("daniel@gmail.com")
+                    .age(37)
+                    .build();
+
+            Author author2 = Author.builder()
+                    .firstName("Marcelo")
+                    .lastName("Silva")
+                    .email("marcelo@gmail.com")
+                    .age(35)
+                    .build();
+
+            Author author3 = Author.builder()
+                    .firstName("Pedro")
+                    .lastName("Mota")
+                    .email("pedro@gmail.com")
+                    .age(27)
+                    .build();
+
+            // Salva todos de uma vez
+            authorRepository.saveAll(List.of(author1, author2, author3));
+
+            System.out.println("=== Fake autores Inseridos ===");
+        }
+    }
+}
+```
+
+🔑 **Dica:**
+A verificação `if (authorRepository.count() == 0)` é boa prática para não duplicar dados toda vez que reiniciar a aplicação.
+
+---
+
+### 2️⃣ **Usar bibliotecas de geração de dados fake**
+
+Aqui, pode usar **bibliotecas populares**, como:
+
+* **[Faker](https://github.com/DiUS/java-faker)** (muito usada)
+* **RandomBeans**
+* Ou criar seu próprio utilitário
+
+**Exemplo com `Faker`:**
+
+```java
+package com.api.demo_data_jpa.service;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.CommandLineRunner;
+import org.springframework.stereotype.Component;
+
+import com.api.demo_data_jpa.model.Author;
+import com.api.demo_data_jpa.repository.AuthorRepository;
+import com.github.javafaker.Faker;
+
+import jakarta.transaction.Transactional;
+
+@Component
+public class AuthorFakeDataFaker implements CommandLineRunner{
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    private final Faker faker = new Faker();
 
 
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
 
+        if (authorRepository.count() == 0) {     // Esse if é uma boa prática para não duplicar dados toda vez que reiniciar a aplicação.
+
+            List<Author> authors = new ArrayList<>();
+
+            for(int i=0; i< 50; i++) {
+                Author author = Author.builder()
+                        .firstName(faker.name().firstName())         // Um nome aleatório
+                        .lastName(faker.name().lastName())           // Um sobrenome aleatório
+                        .email(faker.internet().emailAddress())      // Um e-mail plausível
+                        .age(faker.number().numberBetween(20, 60))   // Um número dentro do intervalo de 20 a 60
+                        .build();
+
+                authors.add(author);
+            }
+            
+            authorRepository.saveAll(authors);
+            System.out.println("=== Fake autores gerados com Faker ===");
+
+            for (Author author : authors) {
+                System.out.println("Nome do autor: " + author.getFirstName() 
+                    + " | Sobrenome: " + author.getLastName()
+                    + " | E-mail: " + author.getEmail()
+                    + " | Idade: " + author.getAge());
+            }
+        }
+    }
+    
+}
+```
+
+### 3️⃣ **Usar scripts SQL**
+
+Outra forma clássica:
+
+* Criar um arquivo `data.sql` em `src/main/resources`:
+
+  ```sql
+  INSERT INTO author_tbl (id, first_name, last_name, email, age)
+  VALUES (1, 'Daniel', 'Penelva', 'daniel@gmail.com', 37);
+
+  INSERT INTO author_tbl (id, first_name, last_name, email, age)
+  VALUES (2, 'Marcelo', 'Silva', 'marcelo@gmail.com', 35);
+  ```
+
+* O Spring Boot executa isso automaticamente na inicialização (se configurado com `spring.datasource.initialization-mode=always` ou usando `schema.sql` e `data.sql`).
+
+## 🚦 **Qual usar?**
+
+| Método                | Vantagem                                                 | Desvantagem                                 |
+| --------------------- | -------------------------------------------------------- | ------------------------------------------- |
+| **CommandLineRunner** | Flexível, usa código Java, pode rodar lógica condicional | Precisa compilar                            |
+| **Biblioteca Faker**  | Gera dados realistas, ideal para grande volume           | Precisa adicionar dependência               |
+| **SQL (`data.sql`)**  | Simples e claro, fácil de controlar                      | Difícil de gerar dados grandes ou dinâmicos |
+
+
+## ✅ **Ídeia Geral do Faker**
+
+Quando se fala em usar **fake data**, especialmente com uma **biblioteca como o [Java Faker](https://github.com/DiUS/java-faker)**, a ideia é **gerar valores aleatórios realistas automaticamente** para as propriedades do seu objeto — sem você ter que inventar manualmente.
+
+### 📌 **Como funciona na prática**
+
+Por exemplo:
+No `Faker`:
+
+| **Propriedade** | **Método do Faker**                    | O que ele gera?               |
+| --------------- | -------------------------------------- | ----------------------------- |
+| `firstName`     | `faker.name().firstName()`             | Um nome aleatório             |
+| `lastName`      | `faker.name().lastName()`              | Um sobrenome aleatório        |
+| `email`         | `faker.internet().emailAddress()`      | Um e-mail plausível           |
+| `age`           | `faker.number().numberBetween(20, 60)` | Um número dentro do intervalo |
+
+Assim, para cada loop, você monta um objeto com dados únicos, por exemplo:
+
+```java
+Faker faker = new Faker();
+
+Author author = Author.builder()
+    .firstName(faker.name().firstName())   // exemplo: "Lucas"
+    .lastName(faker.name().lastName())     // exemplo: "Souza"
+    .email(faker.internet().emailAddress())// exemplo: "lucas.souza@example.com"
+    .age(faker.number().numberBetween(20, 60)) // exemplo: 45
+    .build();
+```
+
+Cada vez que roda, ele inventa outros valores.
+
+
+### 📍 **Resumo**
+
+✅ **Com Faker**:
+Você **não precisa definir manualmente** cada valor.
+O Faker cria dados que **parecem reais** (nomes, e-mails, endereços, CPFs, frases, datas, etc).
+
+⚡ **Sem Faker**:
+Você mesmo escreve cada valor fixo (ex: `.firstName("Daniel")`).
+
+
+### 💡 **Por que usar Faker?**
+
+* Automatiza a geração de muitos registros de teste.
+* Deixa seu banco com aparência de dados reais.
+* Evita repetição de nomes iguais.
+* Ideal para testes de performance, paginação, relatórios, etc.
+
+
+## ✅ **Conclusão**
+
+📌 Para um projeto real:
+
+* Usar `CommandLineRunner` com `Faker` para dados dinâmicos.
+* Para seed inicial simples, `data.sql` é suficiente.
