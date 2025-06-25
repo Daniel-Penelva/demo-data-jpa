@@ -3817,3 +3817,390 @@ Você mesmo escreve cada valor fixo (ex: `.firstName("Daniel")`).
 
 * Usar `CommandLineRunner` com `Faker` para dados dinâmicos.
 * Para seed inicial simples, `data.sql` é suficiente.
+
+---
+---
+
+# @Modifying - Para executar operações de alteração no banco de dados
+
+## 📌 **@Modifying: o que é e quando usar**
+
+No Spring Data JPA, o `@Modifying` é uma anotação usada **para executar operações de escrita diretamente com `@Query`**, como `UPDATE`, `DELETE` ou `INSERT` customizados.
+
+➡️ Por padrão, o Spring Data entende que consultas `@Query` são **somente leitura** — então, quando você faz algo que modifica o banco, precisa informar explicitamente com `@Modifying`.
+
+
+## ⚙️ **Como funciona**
+
+### ✅ **Quando usar:**
+
+* Quando quer **executar um SQL JPQL ou SQL nativo** de atualização/exclusão em lote.
+* Quando não quer carregar a entidade inteira, apenas atualizar um campo específico.
+* Quando quer atualizar muitos registros de uma vez sem usar `save()` para cada um.
+
+
+## 📌 **Exemplo com a entidade `Author`**
+
+### 🔹 **Passo 1:**
+
+Definindo o método no repositório (`AuthorRepository`):
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer> {
+
+    // Atualizar nome do autor pelo Id
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE Author a SET a.firstName = :firstName WHERE a.id = :id")
+    int updateFirstNameById(@Param("id") Integer id, @Param("firstName") String firstName);
+
+
+    // Atualizar idade do autor pelo Id
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE Author a SET a.age = :age WHERE a.id = :id")
+    int updateAgeById(@Param("id") Integer id, @Param("age") Integer age);
+
+
+    // Excluir autor com idade menor que...
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("DELETE FROM Author a WHERE a.age < :age")
+    int deleteAuthorsYoungerThan(@Param("age") int age);
+
+}
+```
+
+### 🔹 **Explicação:**
+
+  ✅ `@Modifying` → diz ao Spring que a `@Query` vai modificar dados.
+
+  ✅ `clearAutomatically = true` → Limpa o cache do EntityManager após a atualização e evita inconsistências de leitura logo após um @Modifying.
+
+  ✅ `@Transactional` → operações de escrita precisam de transação.
+
+  ✅ `@Query` → define o JPQL de atualização.
+
+  ✅ O método retorna `int` → quantidade de linhas afetadas.
+
+
+## 🔹 **Passo 2:**
+
+Usando esses métodos em um serviço ou `CommandLineRunner`:
+
+✅ **Exemplo 1:** `Classe de teste AuthorFakeDataFaker`
+
+```java
+@Component
+public class AuthorFakeDataFaker implements CommandLineRunner{
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    private final Faker faker = new Faker();
+
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        if (authorRepository.count() == 0) {   // Esse if é uma boa prática para não duplicar dados toda vez que reiniciar a aplicação.
+
+            List<Author> authors = new ArrayList<>();
+
+            for(int i=0; i< 10; i++) {
+                Author author = Author.builder()
+                        .firstName(faker.name().firstName())         // Um nome aleatório
+                        .lastName(faker.name().lastName())           // Um sobrenome aleatório
+                        .email(faker.internet().emailAddress())      // Um e-mail plausível
+                        .age(faker.number().numberBetween(20, 60))   // Um número dentro do intervalo de 20 a 60
+                        .build();
+
+                authors.add(author);
+            }
+            
+            authorRepository.saveAll(authors);
+            System.out.println("=== Fake autores gerados com Faker ===");
+
+            for (Author author : authors) {
+                System.out.println("Nome do autor: " + author.getFirstName() 
+                    + " | Sobrenome: " + author.getLastName()
+                    + " | E-mail: " + author.getEmail()
+                    + " | Idade: " + author.getAge());
+            }
+        }
+
+        // ---- UPDATE ----
+        // Atualizando o nome do autor com id 1 
+        int rowsUpdateFirstName = authorRepository.updateFirstNameById(1, "Daniel Updated");
+        System.out.println("Atualizar Linha do nome: " + rowsUpdateFirstName);
+
+
+        // Atualizando a idade do autor com id 1
+        int rowsUpdateAge = authorRepository.updateAgeById(1, 30);
+        System.out.println("Atualizar linha da idade: " + rowsUpdateAge);
+
+
+        // ---- DELETE ----
+        int rowsDelete = authorRepository.deleteAuthorsYoungerThan(30);
+        System.out.println("Linhas deletadas (autores com idade < 30): " + rowsDelete);
+
+
+        // ---- Estado Final dos Autores ----
+        System.out.println("\nEstado Final dos Autores:");
+        List<Author> remainingAuthors = authorRepository.findAll();
+        remainingAuthors.forEach(a -> System.out.println(
+            "ID: " + a.getId()
+            + " | Nome: " + a.getFirstName()
+            + " | Idade: " + a.getAge()
+        ));
+    }
+    
+}
+```
+
+✅ **Exemplo 2:** `Classe de teste AuthorFakeDataFaker`
+
+```java
+@Component
+public class ModifyingQueryExample implements CommandLineRunner{
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+        
+        var author1 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Penelva")
+                .email("daniel@gmail.com")
+                .age(37)
+                .build();
+
+        var author2 = Author.builder()
+                .firstName("Marcelo")
+                .lastName("Silva")
+                .email("marcelo@gmail.com")
+                .age(35)
+                .build();
+
+        var author3 = Author.builder()
+                .firstName("Pedro")
+                .lastName("Mota")
+                .email("pedro@gmail.com")
+                .age(27)
+                .build();
+
+        var author4 = Author.builder()
+                .firstName("Maria")
+                .lastName("Nunes")
+                .email("maria@gmail.com")
+                .age(31)
+                .build();
+
+        authorRepository.saveAll(List.of(author1, author2, author3, author4));
+
+        System.out.println("\n=== Lista de Autores ===");
+        authorRepository.findAll().forEach(a -> System.out.println(
+            "ID: " + a.getId() 
+            + " | Nome: " + a.getFirstName() 
+            + " | Idade: " + a.getAge()
+        ));
+
+        // 1) Atualizar nome do author
+        System.out.println("\n=== Atualizar nome do autor ===");
+        authorRepository.updateFirstNameById(1, "Daniel Updated");
+
+        authorRepository.findAll().forEach(a -> System.out.println(
+            "ID: " + a.getId() 
+            + " | Nome: " + a.getFirstName()
+        ));
+
+        // 2) Atualizar idade do author
+        System.out.println("\n=== Atualizar idade do autor ===");
+        authorRepository.updateAgeById(1, 31);
+
+        authorRepository.findAll().forEach(a -> System.out.println(
+            "ID: " + a.getId() 
+            + " | Nome: " + a.getFirstName() 
+            + " | Idade: " + a.getAge()
+        ));
+
+
+        // 3) Deletar autores com idade menor que 30
+        System.out.println("\n=== Deletar autores com idade menor que 30 ===");
+        authorRepository.deleteAuthorsYoungerThan(30);
+        
+
+        System.out.println("\n=== Depois do delete ===");
+        
+        authorRepository.findAll().forEach(a -> System.out.println(
+            "ID: " + a.getId() 
+            + " | Nome: " + a.getFirstName() 
+            + " | Idade: " + a.getAge()
+        ));
+
+    }   
+}
+```
+
+## 📍 **Observações importantes**
+
+✅ **Por que não usar só `save()`?**
+
+* Com `save()`, você precisa buscar a entidade, alterar o campo, depois salvar.
+* Com `@Modifying`, você faz direto no banco → melhor para atualizações em lote ou simples.
+
+⚠️Quando se usa `@Modifying` com uma `@Query`, **você está escrevendo SQL ou JPQL manualmente**, e o Spring Data JPA **executa diretamente no banco de dados**, sem passar pelos métodos padrões do `save()` ou `EntityManager.persist()`.
+
+
+### ✅ Vantagens do `@Modifying`
+
+* **Mais performático** para:
+
+  * Atualizações em **lote** (`UPDATE ... WHERE ...`)
+  * **Deleções específicas** sem carregar os objetos na memória
+* Evita o custo de conversão de entidade e sincronização do estado no Hibernate
+* Ideal quando você **não precisa modificar o objeto em memória**, apenas atualizar no banco
+
+
+### ⚠️ Quando usar `save(...)`?
+
+* Quando está **criando** ou **atualizando entidades específicas em memória**
+* Quando quer aproveitar o ciclo de vida da entidade (eventos como `@PrePersist`, `@PreUpdate`, etc.)
+* Quando os dados **vêm do usuário** ou de alguma camada da aplicação
+
+
+### 🗂️ **Resumo**
+
+| O que faz                                 | Qual anotação usar                         |
+| ----------------------------------------- | ------------------------------------------ |
+| Query de leitura                          | Só `@Query`                                |
+| Query de escrita (UPDATE, DELETE, INSERT) | `@Query` + `@Modifying` + `@Transactional` |
+
+
+### 🗂️ **Melhor Abordagem**
+
+| Cenário                                                             | Melhor abordagem          |
+| ------------------------------------------------------------------- | ------------------------- |
+| Atualizar muitos registros direto no banco (sem carregar entidades) | `@Modifying` com `@Query` |
+| Atualizar 1 entidade carregada da base ou criada na app             | `save()` ou `saveAll()`   |
+| Deletar vários registros com filtro                                 | `@Modifying` com `DELETE` |
+| Deletar um objeto já carregado                                      | `delete(...)`             |
+
+
+
+
+
+## Comparativo **`@Modifying` com `save()`**
+
+✅ Para comparar **`@Modifying` com `save()`** usando a entidade `Author`.
+
+
+✅ 📌 Entidade `Author`:
+
+```java
+@Entity
+public class Author {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer id;
+
+    private String firstName;
+    private String lastName;
+    private String email;
+    private int age;
+}
+```
+
+### ✅ 1. Atualizando com `save()` (padrão JPA)
+
+#### 🔁 Fluxo:
+
+* Carrega o autor do banco com `findById`
+* Modifica os atributos
+* Usa `save()` para sincronizar com o banco
+
+#### 🧪 Exemplo:
+
+```java
+Optional<Author> optionalAuthor = authorRepository.findById(1);
+
+if (optionalAuthor.isPresent()) {
+    Author author = optionalAuthor.get();
+    author.setFirstName("Daniel Updated");
+    author.setAge(40);
+    
+    authorRepository.save(author); // Aqui sincroniza com o banco
+}
+```
+
+#### ✅ Vantagens:
+
+* Simples e seguro
+* Usa o contexto de persistência (Hibernate controla o estado)
+
+#### ⚠️ Desvantagens:
+
+* Carrega o objeto na memória
+* Pode ser **ineficiente para grandes volumes** (N objetos → N queries)
+
+
+### ✅ 2. Atualizando com `@Modifying` + `@Query` (SQL/JPQL direto)
+
+#### 📍 Repositório: `AuthorRepository`
+
+```java
+@Modifying
+@Transactional
+@Query("UPDATE Author a SET a.firstName = :name WHERE a.id = :id")
+int updateFirstNameById(@Param("id") Integer id, @Param("name") String name);
+```
+
+#### 🧪 Exemplo:
+
+```java
+int updated = authorRepository.updateFirstNameById(1, "Daniel Updated");
+System.out.println("Linhas atualizadas: " + updated);
+```
+
+#### ✅ Vantagens:
+
+* **Mais performático**: não carrega entidade
+* Perfeito para **atualizações em lote**
+
+#### ⚠️ Desvantagens:
+
+* Não atualiza o objeto em memória (caso precise)
+* Sem suporte automático a validações ou eventos JPA
+
+
+### ✅ Comparativo
+
+| Aspecto                     | `save()`                          | `@Modifying` com `@Query`    |
+| --------------------------- | --------------------------------- | ---------------------------- |
+| Controle de estado          | Sim (Hibernate)                   | Não                          |
+| Performance (grandes lotes) | Mais lenta                        | Muito mais rápida            |
+| Precisa de `findById`       | Sim                               | Não                          |
+| Atualiza objeto em memória  | Sim                               | Não                          |
+| Ideal para                  | Atualização pontual ou com lógica | Atualização em massa simples |
+
+
+## 🔥 Dica Extra
+
+Pode combinar os dois:
+
+```java
+// Atualiza por JPQL rápido...
+authorRepository.updateFirstNameById(1, "Atualizado");
+
+// E recarrega caso precise exibir depois:
+Author updated = authorRepository.findById(1).orElse(null);
+System.out.println(updated.getFirstName());
+```
+
+
+

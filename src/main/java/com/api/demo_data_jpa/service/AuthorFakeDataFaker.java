@@ -30,7 +30,7 @@ public class AuthorFakeDataFaker implements CommandLineRunner{
 
             List<Author> authors = new ArrayList<>();
 
-            for(int i=0; i< 50; i++) {
+            for(int i=0; i< 10; i++) {
                 Author author = Author.builder()
                         .firstName(faker.name().firstName())                 // Um nome aleatório
                         .lastName(faker.name().lastName())                   // Um sobrenome aleatório
@@ -51,6 +51,31 @@ public class AuthorFakeDataFaker implements CommandLineRunner{
                     + " | Idade: " + author.getAge());
             }
         }
+
+        // ---- UPDATE ----
+        // Atualizando o nome do autor com id 1 
+        int rowsUpdateFirstName = authorRepository.updateFirstNameById(1, "Daniel Updated");
+        System.out.println("Atualizar Linha do nome: " + rowsUpdateFirstName);
+
+
+        // Atualizando a idade do autor com id 1
+        int rowsUpdateAge = authorRepository.updateAgeById(1, 30);
+        System.out.println("Atualizar linha da idade: " + rowsUpdateAge);
+
+
+        // ---- DELETE ----
+        int rowsDelete = authorRepository.deleteAuthorsYoungerThan(30);
+        System.out.println("Linhas deletadas (autores com idade < 30): " + rowsDelete);
+
+
+        // ---- Estado Final dos Autores ----
+        System.out.println("\nEstado Final dos Autores:");
+        List<Author> remainingAuthors = authorRepository.findAll();
+        remainingAuthors.forEach(a -> System.out.println(
+            "ID: " + a.getId()
+            + " | Nome: " + a.getFirstName()
+            + " | Idade: " + a.getAge()
+        ));
     }
     
 }

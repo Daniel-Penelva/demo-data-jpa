@@ -3,9 +3,14 @@ package com.api.demo_data_jpa.repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import com.api.demo_data_jpa.model.Author;
+
+import jakarta.transaction.Transactional;
 
 @Repository
 public interface AuthorRepository extends JpaRepository<Author, Integer>{
@@ -86,6 +91,27 @@ public interface AuthorRepository extends JpaRepository<Author, Integer>{
     // JPQL: SELECT a FROM Author a WHERE a.first_name LIKE :prefix
     // Buscar todos com o nome começando com...
     List<Author> findAllByFirstNameStartingWith(String prefix);
+
+
+    // Atualizar nome do autor pelo Id
+    @Modifying(clearAutomatically = true)   // Indica que é uma query de modificação | clearAutomatically limpa o cache do EntityManager após a atualização e evita inconsistências de leitura logo após um @Modifying.
+    @Transactional         // Necessário, pois update precisa estar em uma transação
+    @Query("UPDATE Author a SET a.firstName = :firstName WHERE a.id = :id")
+    int updateFirstNameById(@Param("id") Integer id, @Param("firstName") String firstName);
+
+
+    // Atualizar idade do autor pelo Id
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE Author a SET a.age = :age WHERE a.id = :id")
+    int updateAgeById(@Param("id") Integer id, @Param("age") Integer age);
+
+
+    // Excluir autor com idade menor que...
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("DELETE FROM Author a WHERE a.age < :age")
+    int deleteAuthorsYoungerThan(@Param("age") int age);
 }
 
 /*Anotação:
@@ -123,4 +149,6 @@ public interface AuthorRepository extends JpaRepository<Author, Integer>{
  *      => countBy = retorna um número (quantos registros atendem à condição).
  *      => existsBy = retorna true se existir pelo menos 1 registro que atende à condição. Ou seja, retorna true/false se existir ou não.
  * 
+ * @Modifying - Indica que é uma query de modificação.
+ * @Transactional - Necessário, pois update precisa estar em uma transação.
 */
