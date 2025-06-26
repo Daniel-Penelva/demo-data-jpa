@@ -9,19 +9,49 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.NamedQueries;
+import jakarta.persistence.NamedQuery;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "AUTHOR_TBL")
+@NamedQueries({
+    @NamedQuery(
+        name = "Author.findByEmail",
+        query = "SELECT a FROM Author a WHERE a.email = :email"
+    ),
+    @NamedQuery(
+        name = "Author.findByFirstName",
+        query = "SELECT a FROM Author a WHERE a.firstName = :firstName"
+    ),
+    @NamedQuery(
+        name = "Author.findByAgeGreaterThan",
+        query = "SELECT a FROM Author a WHERE a.age > :age"
+    ),
+    @NamedQuery(
+        name = "Author.countByFirstName",
+        query = "SELECT COUNT(a) FROM Author a WHERE a.firstName = :firstName"
+    ),
+    @NamedQuery(
+        name = "Author.updateAgeByEmail",
+        query = "UPDATE Author a SET a.age = :age WHERE a.email = :email"
+    ),
+    @NamedQuery(
+        name = "Author.deleteByAgeLessThan",
+        query = "DELETE FROM Author a WHERE a.age < :age"
+    )
+})
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
 @SuperBuilder
 public class Author extends BaseEntity{
 

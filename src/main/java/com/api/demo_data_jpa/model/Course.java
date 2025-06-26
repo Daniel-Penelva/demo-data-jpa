@@ -13,6 +13,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.NamedQuery;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -23,6 +24,10 @@ import lombok.experimental.SuperBuilder;
 
 @Entity
 @Table(name = "COURSE_TBL")
+@NamedQuery(
+    name = "Course.findByName",
+    query = "SELECT c FROM Course c WHERE c.name = :name"
+)
 @Data
 @AllArgsConstructor
 @NoArgsConstructor

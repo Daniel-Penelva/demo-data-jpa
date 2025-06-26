@@ -1,6 +1,7 @@
 package com.api.demo_data_jpa.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -112,6 +113,33 @@ public interface AuthorRepository extends JpaRepository<Author, Integer>{
     @Transactional
     @Query("DELETE FROM Author a WHERE a.age < :age")
     int deleteAuthorsYoungerThan(@Param("age") int age);
+
+
+    /* ==== Utilizando @NamedQueries ==== */ 
+    @Query(name = "Author.findByEmail")
+    Optional<Author> buscarPorEmail(@Param("email") String email);
+
+    @Query(name = "Author.findByFirstName")
+    List<Author> buscarPorNome(@Param("firstName") String firstName);
+
+    @Query(name = "Author.findByAgeGreaterThan")
+    List<Author> buscarPorIdadeMaiorQue(@Param("age") int idade);
+
+    @Query(name = "Author.countByFirstName")
+    long contarPorNome(@Param("firstName") String nome);
+
+
+    /* ==== Utilizando NamedQueries com Modifying e Transactional ==== */
+    @Modifying
+    @Transactional
+    @Query(name = "Author.updateAgeByEmail")
+    int atualizarIdadePorEmail(@Param("age") int age, @Param("email") String email);
+
+    @Modifying
+    @Transactional
+    @Query(name = "Author.deleteByAgeLessThan")
+    int deletarPorIdadeMenorQue(@Param("age") int age);
+
 }
 
 /*Anotação:

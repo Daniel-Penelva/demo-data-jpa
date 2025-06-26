@@ -4202,5 +4202,436 @@ Author updated = authorRepository.findById(1).orElse(null);
 System.out.println(updated.getFirstName());
 ```
 
+---
+---
+
+# O que são `@NamedQuery` e `@NamedQueries`?
+
+O uso de **`@NamedQuery` / `@NamedQueries`** são ótimos para **centralizar consultas**, para organizar melhor **consultas mais reutilizáveis** e para **consultas mais complexas**.
+
+* São **consultas JPQL estáticas** associadas a uma **entidade**.
+* Definidas **na própria classe da entidade**, geralmente no topo.
+* Compiladas **em tempo de inicialização** da aplicação → ajudam a evitar erros de sintaxe em tempo de execução.
+* Permite centralizar e reutilizar **lógicas de negócio repetitivas ou complexas**.
+
+## Utilizando `@NamedQuery`
+
+### 🧩 1. Entidade com `@NamedQuery`
+
+✅ `Entidade Course`
+
+```java
+@Entity
+@Table(name = "COURSE_TBL")
+@NamedQuery(
+    name = "Course.findByName",
+    query = "SELECT c FROM Course c WHERE c.name = :name"
+)
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@SuperBuilder
+public class Course extends BaseEntity{
+
+    @Column(length = 100)
+    private String name;
+
+    @Column(length = 500)
+    private String description;
+}
+```
+
+✅ `Repositório CourseRepository`
+
+```java
+@Repository
+public interface CourseRepository extends JpaRepository<Course, Integer>{
+
+    /* ==== Utilizando @NamedQuery ==== */ 
+
+    @Query(name = "Course.findByName")
+    Optional<Course> buscarPorNome(@Param("name") String name);
+    
+}
+```
+
+✅ `Classe de Teste NamedQueryExample`
+
+```java
+@Component
+public class NamedQueryExample implements CommandLineRunner {
+
+    @Autowired
+    private CourseRepository courseRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        Course course1 = Course.builder()
+                .name("Programação Orientado a Objeto")
+                .description("Texto sobre POO")
+                .build();
+
+        Course course2 = Course.builder()
+                .name("Programação JAVA")
+                .description("Texto sobre Programação JAVA")
+                .build();
+
+        Course course3 = Course.builder()
+                .name("Arquitetura de Software")
+                .description("Texto sobre Arquitetura de Software")
+                .build();
+
+        Course course4 = Course.builder()
+                .name("Modelagem de Dados")
+                .description("Texto sobre Modelagem de dados")
+                .build();
+
+        courseRepository.saveAll(List.of(course1, course2, course3, course4));
+
+        // Buscar Cursos por Nome
+        System.out.println("\n === Buscando Curso por nome ===");
+        courseRepository.buscarPorNome("Arquitetura de Software").ifPresentOrElse(
+                c -> System.out.println("Curso Encontrado: " + c.getName()),
+                () -> System.out.println("Curso não encontrado"));
+    }
+
+}
+```
+
+### ✅ Diferença entre `@NamedQuery` vs `@Query`
+
+| Aspecto         | `@NamedQuery`                       | `@Query`                      |
+| --------------- | ----------------------------------- | ----------------------------- |
+| Onde é definida | Na **entidade**                     | No **repositório**            |
+| Avaliada        | **Na inicialização** do Hibernate   | Em **tempo de execução**      |
+| Boa para reuso  | ✅                                   | Apenas em um ponto específico |
+| Performance     | Ligeiramente melhor (pré-compilada) | Leve diferença                |
+
+
+## Utilizando `@NamedQueries`
+
+### 🧩 2. Entidade com `@NamedQueries`
+
+✅ `Entidade Author`
+
+```java
+@Entity
+@Table(name = "AUTHOR_TBL")
+@NamedQueries({
+    @NamedQuery(
+        name = "Author.findByEmail",
+        query = "SELECT a FROM Author a WHERE a.email = :email"
+    ),
+    @NamedQuery(
+        name = "Author.findByFirstName",
+        query = "SELECT a FROM Author a WHERE a.firstName = :firstName"
+    ),
+    @NamedQuery(
+        name = "Author.findByAgeGreaterThan",
+        query = "SELECT a FROM Author a WHERE a.age > :age"
+    ),
+    @NamedQuery(
+        name = "Author.countByFirstName",
+        query = "SELECT COUNT(a) FROM Author a WHERE a.firstName = :firstName"
+    )
+})
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@SuperBuilder
+public class Author extends BaseEntity{
+
+    @Column(name = "first_name", nullable = false, length = 35)
+    @JsonProperty("first_name")
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    @JsonProperty("last_name")
+    private String lastName;
+    
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+    
+    @Column(nullable = false)
+    private int age;
+}
+```
+
+✅ `Repositório AuthorRepository`
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer>{
+
+    /* ==== Utilizando @NamedQueries ==== */ 
+    @Query(name = "Author.findByEmail")
+    Optional<Author> buscarPorEmail(@Param("email") String email);
+
+    @Query(name = "Author.findByFirstName")
+    List<Author> buscarPorNome(@Param("firstName") String firstName);
+
+    @Query(name = "Author.findByAgeGreaterThan")
+    List<Author> buscarPorIdadeMaiorQue(@Param("age") int idade);
+
+    @Query(name = "Author.countByFirstName")
+    long contarPorNome(@Param("firstName") String nome);
+    
+}
+```
+
+✅ `Classe de Teste NamedQueriesExample`
+
+```java
+@Component
+public class NamedQueriesExample implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        var author1 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Penelva")
+                .email("daniel@gmail.com")
+                .age(37)
+                .build();
+
+        var author2 = Author.builder()
+                .firstName("Marcelo")
+                .lastName("Silva")
+                .email("marcelo@gmail.com")
+                .age(35)
+                .build();
+
+        var author3 = Author.builder()
+                .firstName("Pedro")
+                .lastName("Mota")
+                .email("pedro@gmail.com")
+                .age(27)
+                .build();
+
+        var author4 = Author.builder()
+                .firstName("Maria")
+                .lastName("Nunes")
+                .email("maria@gmail.com")
+                .age(31)
+                .build();
+
+        var author5 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Mota")
+                .email("danielmota@gmail.com")
+                .age(34)
+                .build();
+
+        authorRepository.saveAll(List.of(author1, author2, author3, author4, author5));
+
+        // 1) Buscar Autor por E-mail
+        System.out.println("\n=== Exemplo 1: Buscar Autor por E-mail ===");
+
+        authorRepository.buscarPorEmail("pedro@gmail.com").ifPresentOrElse(
+                a -> System.out.println("E-mail Encontrado: " + a.getEmail()),
+                () -> System.out.println("E-mail não encontrado"));
+
+        // Ou pode fazer assim - código menos limpo:
+        System.out.println("\n=== Exemplo 2: Buscar Autor por E-mail ===");
+        var authorByEmail = authorRepository.buscarPorEmail("danielmota@gmail.com");
+        if (authorByEmail.isPresent()) {
+            System.out.println("E-mail Encontrado: " + authorByEmail.get().getEmail());
+        } else {
+            System.out.println("E-mail Não Encontrado.");
+        }
+
+
+        // 2) Buscar Autor por Nome
+
+        System.out.println("\n=== Exemplo 1: Buscar Autor por nome ===");
+        authorRepository.buscarPorNome("Daniel").forEach(a -> System.out.println(
+                "Nome: " + a.getFirstName()
+                        + " - Idade: " + a.getAge()));
+
+        // Ou pode fazer assim condicionando
+        System.out.println("\n=== Exemplo 2: Buscar Autor por nome ===");
+        List<Author> autores = authorRepository.buscarPorNome("Daniel");
+        if (!autores.isEmpty()) {
+            autores.forEach(a -> System.out.println("Nome encontrado: " + a.getFirstName()));
+        } else {
+            System.out.println("Nome não encontrado.");
+        }
+
+
+        // 3) Buscar por idade maior que...
+        System.out.println("\n=== Exemplo 1: Buscar por idade maior que... ===");
+        authorRepository.buscarPorIdadeMaiorQue(30).forEach(System.out::println);
+
+        // Ou pode fazer assim:
+        System.out.println("\n=== Exemplo 2: Buscar por idade maior que... ===");
+        authorRepository.buscarPorIdadeMaiorQue(35).forEach(a -> System.out.println(
+                "Nome: " + a.getFirstName()
+                        + " - Idade: " + a.getAge()));
+
+
+        // 4) Contar Por nome
+        System.out.println("\n=== Contar Por nome ===");
+        long contarNome = authorRepository.contarPorNome("Daniel");
+        System.out.println("São ao todo: " + contarNome + " nome(s) encontrado(s)");
+    }
+}
+```
+
+### ✅ Quando usar `@NamedQueries`?
+
+| Caso de uso                                   | Indicação               |
+| --------------------------------------------- | ----------------------- |
+| Lógicas de consulta repetidas                 | ✅                       |
+| Consultas **complexas** com múltiplos filtros | ✅                       |
+| Reuso entre diferentes pontos do projeto      | ✅                       |
+| Deseja **validação antecipada** (compilação)  | ✅                       |
+| Consulta muito simples (e pouco reutilizável) | ❌ — use `@Query` direto |
+
+
+## 🧠 Dica extra (boas práticas)
+
+* Use nomes descritivos, ex: `"Author.findByEmail"` → fácil de encontrar.
+* Ideal para projetos maiores com muitas camadas (ex: DDD, arquitetura hexagonal).
+* Ajuda a evitar **duplicação de lógica** nos serviços ou repositórios.
+
+
+## É perfeitamente possível utilizar `@Modifying` junto com `@NamedQuery` ou `@NamedQueries`
+
+**É perfeitamente possível usar `@Modifying` junto com `@NamedQuery` ou `@NamedQueries`** quando estiver definindo queries do tipo **`UPDATE` ou `DELETE`**.
+
+
+### ✅ Como funciona
+
+Por padrão, o Spring Data JPA trata `@Query` como **SELECT**. Para executar **modificações no banco de dados**, como `UPDATE` ou `DELETE`, é necessário indicar isso explicitamente com a anotação `@Modifying`.
+
+
+### ✅ Exemplo completo com `@NamedQuery` + `@Modifying`
+
+#### 👇 1. Definindo a `@NamedQuery` na entidade:
+
+✅ `Entidade Author`
+
+```java
+@Entity
+@Table(name = "AUTHOR_TBL")
+@NamedQueries({
+    @NamedQuery(
+        name = "Author.updateAgeByEmail",
+        query = "UPDATE Author a SET a.age = :age WHERE a.email = :email"
+    ),
+    @NamedQuery(
+        name = "Author.deleteByAgeLessThan",
+        query = "DELETE FROM Author a WHERE a.age < :age"
+    )
+})
+public class Author {
+    // campos...
+}
+```
+
+#### 👇 2. Usando no repositório:
+
+✅ `Repositório AuthorRepository`
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer> {
+
+    @Modifying
+    @Transactional
+    @Query(name = "Author.updateAgeByEmail")
+    int atualizarIdadePorEmail(@Param("age") int age, @Param("email") String email);
+
+    @Modifying
+    @Transactional
+    @Query(name = "Author.deleteByAgeLessThan")
+    int deletarPorIdadeMenorQue(@Param("age") int age);
+}
+```
+
+✅ `Classe de teste NamedQueryModifyingRunner`
+```java
+@Component
+public class NamedQueryModifyingRunner implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        // Criando autores
+        var author1 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Penelva")
+                .email("daniel@gmail.com")
+                .age(37)
+                .build();
+
+        var author2 = Author.builder()
+                .firstName("Maria")
+                .lastName("Nunes")
+                .email("maria@gmail.com")
+                .age(25)
+                .build();
+
+        var author3 = Author.builder()
+                .firstName("Carlos")
+                .lastName("Silva")
+                .email("carlos@gmail.com")
+                .age(28)
+                .build();
+
+        authorRepository.saveAll(List.of(author1, author2, author3));
+
+        System.out.println("\n=== Antes da atualização ===");
+        authorRepository.findAll().forEach(a ->
+                System.out.println("Nome: " + a.getFirstName() + " | Idade: " + a.getAge()));
+
+        // Atualizar idade do Daniel
+        int rowsUpdated = authorRepository.atualizarIdadePorEmail(40, "daniel@gmail.com");
+        System.out.println("\nIdade atualizada. Linhas afetadas: " + rowsUpdated);
+
+        // Deletar autores com idade menor que 30
+        int rowsDeleted = authorRepository.deletarPorIdadeMenorQue(30);
+        System.out.println("Autores deletados com idade < 30: " + rowsDeleted);
+
+        System.out.println("\n=== Depois da modificação ===");
+        authorRepository.findAll().forEach(a ->
+                System.out.println("Nome: " + a.getFirstName() + " | Idade: " + a.getAge()));
+    }
+}
+```
+
+### ⚠️ Atenção:
+
+* **@Modifying** é obrigatório para `UPDATE` e `DELETE`.
+* **@Transactional** também é necessário, pois essas operações modificam o banco.
+
+
+### ✅ Quando usar NamedQuery para update/delete?
+
+Use `@NamedQuery` para **centralizar** as regras de negócio em um único lugar (na entidade), especialmente quando:
+
+* Você quer **evitar duplicação** de queries.
+* Precisa **reutilizar** essas instruções em múltiplos pontos do código.
+* Está em um ambiente com **auditoria ou validações** específicas e quer manter regras agrupadas por entidade.
+
+--- 
+
+## Feito por: `Daniel Penelva de Andrade`
+
+
 
 
