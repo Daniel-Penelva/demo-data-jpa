@@ -4628,10 +4628,350 @@ Use `@NamedQuery` para **centralizar** as regras de negócio em um único lugar 
 * Precisa **reutilizar** essas instruções em múltiplos pontos do código.
 * Está em um ambiente com **auditoria ou validações** específicas e quer manter regras agrupadas por entidade.
 
+---
+---
+
+# O que são Projeções no Spring Data JPA?
+
+**Projeções** permitem retornar **apenas os campos que você precisa**, em vez de carregar a entidade inteira com todos os relacionamentos e colunas.
+
+Elas podem ser feitas de 3 formas principais:
+
+1. **Projeção baseada em interface** ✅ (mais simples)
+2. **Projeção baseada em classe (DTO)** 🧾
+3. **Projeção dinâmica com `@Query` ou `SpEL`** 🔍
+
+
+## 🔹 1. Projeção baseada em interface
+
+### 🧩 Exemplo com a entidade `Author`
+
+### 📦 Interface de projeção:
+
+```java
+public interface AuthorView {
+    String getFirstName();
+    String getEmail();
+    int getAge();
+}
+```
+
+> Dica: os métodos **devem ter exatamente os mesmos nomes** dos atributos da entidade.
+
+
+### 📁 Repositório com método:
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer> {
+
+    List<AuthorView> findByAgeGreaterThan(int age);
+
+    @Query("SELECT a.firstName AS firstName, a.email AS email, a.age AS age FROM Author a WHERE a.firstName = :firstName")
+    List<AuthorView> findByFirstName(String firstName);
+}
+```
+
+**📌 Detalhe importante:**
+
+  - Os aliases (AS firstName, AS lastName etc.) devem corresponder exatamente aos nomes dos métodos getters da interface AuthorView. Isso é obrigatório.
+
+**🧠 Resumo**
+
+| Erro comum                           | Correção                                                      |
+| ------------------------------------ | ------------------------------------------------------------- |
+| `SELECT a FROM AuthorView`           | ❌ `AuthorView` não é uma entidade                             |
+| `SELECT a.firstName AS firstName...` | ✅ Use projeção baseada nos campos da entidade real (`Author`) |
+| Falta de `AS nome`                   | ❌ Spring não consegue mapear para interface                   |
+| Interface precisa de getters         | ✅ Os nomes devem bater exatamente com os aliases da query     |
+
+
+### 🧪 Uso no `CommandLineRunner`:
+
+```java
+@Component
+public class ProjectionExample implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        var author1 = Author.builder()
+                .firstName("John")
+                .lastName("Doe")
+                .email("john@gmail.com")
+                .age(35)
+                .build();
+
+        var author2 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Penelva")
+                .email("daniel@gmail.com")
+                .age(31)
+                .build();
+
+        var author3 = Author.builder()
+                .firstName("Fabiana")
+                .lastName("Silva")
+                .email("fabiana@gmail.com")
+                .age(29)
+                .build();
+
+        var author4 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Mota")
+                .email("daniel.mota@gmail.com")
+                .age(25)
+                .build();
+
+        authorRepository.saveAll(List.of(author1, author2, author3, author4));
+
+        // 1) Exemplo 1: Buscar autores com idade menor ou igual a 30 anos
+        List<AuthorView> authors = authorRepository.findByAgeLessThanEqual(32);
+
+        // Exemplo de uso de projeção de atributos para obter apenas o primeiro nome, email e idade dos autores
+        System.out.println("\n ==== Buscar autores com projeção de atributos ==== ");
+
+        System.out.println("Total de autores encontrados com idade menor ou igual a 30 anos: " + authors.size());
+        for (AuthorView a : authors) {
+            System.out.println("Nome: " + a.getFirstName()
+                    + " | Sobrenome: " + a.getEmail()
+                    + " | Idade: " + a.getAge());
+        }
+
+
+        // 2) Buscar autore(s) pelo nome exato
+        System.out.println("\n ==== Buscar autores pelo nome ==== ");
+        
+        List<AuthorView> authorsByName = authorRepository.findByFirstName("Daniel");
+        
+        System.out.println("Total de autores encontrados com nome 'Daniel': " + authorsByName.size());
+
+        for (AuthorView a : authorsByName) {
+            System.out.println("Nome: " + a.getFirstName()
+                    + " | Email: " + a.getEmail());
+        }
+
+        /*
+            // Ou pode fazer assim também:
+
+            authors.forEach(a ->
+            System.out.println(a.getFirstName() + " | " + a.getAge() + " | " + a.getEmail())
+            );
+        */ 
+
+    }
+}
+```
+
+### ✅ Vantagens dessa abordagem:
+
+* Reduz o tráfego com o banco.
+* Evita carregar dados e relacionamentos desnecessários.
+* É **muito performática** e **fácil de usar**.
+
+---
+
+## 🔹 2. Projeção baseada em classe (DTO)
+
+Pode retornar um DTO diretamente usando `@Query` com `new`.
+
+### 🎯 Objetivo:
+  - Criar um DTO AuthorDTO com apenas os campos firstName, lastName, email e age.
+
+  - Utilizar uma consulta JPQL com **`new`** no repositório para preencher o DTO.
+
+  - Exibir os dados no console com um CommandLineRunner.
+
+### 🧾 DTO record personalizado:
+
+```java
+public record AuthorDTO(String firstName, String lastName, String email, int age) {}
+```
+
+**📌 Detalhe importante:**
+  
+  - O **`record`** é ótimo para criar objetos imutáveis de forma compacta (Java 16+).
+
+### 🔍 Repositório:
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer>{
+    
+    @Query("SELECT new com.api.demo_data_jpa.dto.AuthorDTO(a.firstName, a.lastName, a.email, a.age) FROM Author a WHERE a.age > :age")
+    List<AuthorDTO> buscarAutoresDTO(@Param("age") int age);
+}
+```
+
+**📌 Detalhe importante:**
+
+  - Se o caminho do pacote do AuthorDTO estiver errado vai ocasionar um erro de **`Could not resolve class 'AuthorDTO' named for instantiation`** isso acontece porque o JPQL precisa do nome completamente qualificado da classe DTO, ou seja, com o pacote completo no `SELECT new com.api.demo_data_jpa.dto.AuthorDTO(a.firstName, a.lastName, a.email, a.age)`.
+
+  - ❗️ Nunca use apenas new AuthorDTO(...) sem o nome do pacote completo, a menos que o DTO esteja na mesma classe do repositório (o que não é prática recomendada).
+
+### 🧪 Uso no `CommandLineRunner`:
+
+```java
+@Component
+public class AuthorDTOExample implements CommandLineRunner{
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+        
+        // Criando autores
+        var author1 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Penelva")
+                .email("daniel@gmail.com")
+                .age(37)
+                .build();
+
+        var author2 = Author.builder()
+                .firstName("Maria")
+                .lastName("Nunes")
+                .email("maria@gmail.com")
+                .age(25)
+                .build();
+
+        var author3 = Author.builder()
+                .firstName("Carlos")
+                .lastName("Silva")
+                .email("carlos@gmail.com")
+                .age(28)
+                .build();
+
+        authorRepository.saveAll(List.of(author1, author2, author3));
+
+        System.out.println("\n ==== Buscar autores com DTO ==== ");
+        List<AuthorDTO> authorDTOs = authorRepository.buscarAutoresDTO(27);
+
+        authorDTOs.forEach(dto -> System.out.println(
+            "Nome: " + dto.firstName() 
+            + " | Sobrenome: " + dto.lastName()
+            + " | Email: " + dto.email()
+            + " | Idade: " + dto.age()
+        ));
+    }
+    
+}
+```
+
+### ✨ Benefícios de usar DTO:
+
+  - Evita carregar entidades completas e relacionamentos.
+
+  - Melhora a performance em APIs públicas.
+
+  - Garante segurança ao expor apenas os campos desejados.
+
+---
+
+## 🔹 3. Projeções Dinâmicas
+
+Aqui, pode fazer **projeções dinâmicas** retornando diferentes interfaces no mesmo método com generics:
+
+### 🔍 Repositório:
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer>{
+
+    <T> List<T> findByAgeLessThan(int age, Class<T> type); 
+}
+```
+
+### 🧪 Uso no `CommandLineRunner`:
+
+```java
+@Component
+public class ProjectionExample implements CommandLineRunner {
+
+        @Autowired
+        private AuthorRepository authorRepository;
+
+        @Override
+        @Transactional
+        public void run(String... args) throws Exception {
+
+                var author1 = Author.builder()
+                                .firstName("John")
+                                .lastName("Doe")
+                                .email("john@gmail.com")
+                                .age(35)
+                                .build();
+
+                var author2 = Author.builder()
+                                .firstName("Daniel")
+                                .lastName("Penelva")
+                                .email("daniel@gmail.com")
+                                .age(31)
+                                .build();
+
+                var author3 = Author.builder()
+                                .firstName("Fabiana")
+                                .lastName("Silva")
+                                .email("fabiana@gmail.com")
+                                .age(29)
+                                .build();
+
+                var author4 = Author.builder()
+                                .firstName("Daniel")
+                                .lastName("Mota")
+                                .email("daniel.mota@gmail.com")
+                                .age(25)
+                                .build();
+
+                authorRepository.saveAll(List.of(author1, author2, author3, author4));
+
+                System.out.println("\n ==== Projeção Dinâmica ==== ");
+
+                // 1) Projeção Dinâmica com o tipo de retorno AuthorView
+                List<AuthorView> views = authorRepository.findByAgeLessThan(30, AuthorView.class);
+
+                System.out.println("\n ==== Projeção Dinâmica com o tipo de retorno AuthorView ====");
+
+                if (views.isEmpty()) {
+                        System.out.println("Nenhum autor encontrado com idade menor que 30 anos.");
+                        return;
+                } else {
+                        System.out.println("Total de autores encontrados com idade menor que 30 anos: " + views.size());
+                        views.forEach(a -> System.out.println(
+                                        "Nome: " + a.getFirstName()
+                                        + " | Idade: " + a.getAge()));
+                }
+
+
+                // 2) Projeção Dinâmica com o tipo de retorno AuthorDTO
+                List<AuthorDTO> dtos = authorRepository.findByAgeLessThan(35, AuthorDTO.class);
+
+                System.out.println("\n ==== Projeção Dinâmica com o tipo de retorno AuthorDTO ====");
+
+                if (dtos.isEmpty()) {
+                        System.out.println("Nenhum autor encontrado com idade menor que 35 anos.");
+                } else {
+                        System.out.println("Total de autores encontrados com idade menor que 35 anos: " + dtos.size());
+
+                        dtos.forEach(dto -> System.out.println(
+                                        "Nome: " + dto.firstName()
+                                        + " | Idade: " + dto.age()));
+                }
+        }
+}
+```
+
+## ❗ Cuidados:
+
+* Não funciona com métodos de relacionamento como `getCourses()` se não estiverem no `fetch`.
+* Projeções são **somente leitura**. Elas **não podem ser usadas para persistência**.
+
 --- 
 
 ## Feito por: `Daniel Penelva de Andrade`
-
-
-
-

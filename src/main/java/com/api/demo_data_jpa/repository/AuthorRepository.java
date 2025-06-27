@@ -9,7 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import com.api.demo_data_jpa.dto.AuthorDTO;
 import com.api.demo_data_jpa.model.Author;
+import com.api.demo_data_jpa.projection.AuthorView;
 
 import jakarta.transaction.Transactional;
 
@@ -139,6 +141,28 @@ public interface AuthorRepository extends JpaRepository<Author, Integer>{
     @Transactional
     @Query(name = "Author.deleteByAgeLessThan")
     int deletarPorIdadeMenorQue(@Param("age") int age);
+
+
+    /* ==== 1) Utilizando Projeção Baseada em Interface ==== */
+    // Buscar por idade menor ou igual que...
+    List<AuthorView> findByAgeLessThanEqual(@Param("age") int idade);
+
+    // Buscar por nome exato e retornar apenas os atributos especificados na interface AuthorView
+    @Query("SELECT a.firstName AS firstName, a.email AS email, a.age AS age FROM Author a WHERE a.firstName = :firstName")
+    List<AuthorView> findByFirstName(String firstName);
+
+    /*OBS. Os aliases (AS firstName, AS lastName etc.) devem corresponder exatamente aos nomes dos métodos getters da interface AuthorView. 
+    Isso é obrigatório.*/
+
+
+    /* ==== 2) Utilizando DTO (Data Transfer Objects) AuthorDTO ==== */
+    @Query("SELECT new com.api.demo_data_jpa.dto.AuthorDTO(a.firstName, a.lastName, a.email, a.age) FROM Author a WHERE a.age > :age")
+    List<AuthorDTO> buscarAutoresDTO(@Param("age") int age);
+
+
+    /* ==== 3) Utilizando Projeção Dinâmicas ==== */
+    // Buscar por idade menor ou que...
+    <T> List<T> findByAgeLessThan(int age, Class<T> type);  
 
 }
 
