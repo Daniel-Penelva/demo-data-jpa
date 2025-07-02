@@ -5,6 +5,7 @@ import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
+import org.mapstruct.Named;
 import org.mapstruct.factory.Mappers;
 
 import com.api.demo_data_jpa.dto.AuthorDTO;
@@ -23,11 +24,17 @@ public interface AuthorMapper {
         @Mapping(source = "email", target = "emailAddress"),
         @Mapping(source = "address.streetName", target = "streetName"),
         @Mapping(source = "address.houseNumber", target = "houseNumber"),
-        @Mapping(source = "address.zipCode", target = "zipCode")
+        @Mapping(source = "address.zipCode", target = "zipCode"),
+        @Mapping(source = "firstName", target = "firstName", qualifiedByName = "toUpper")
     })
     AuthorDTO toDto(Author author);
 
     // Converte uma lista de entidades Author em uma lista de DTOs AuthorDTO
     List<AuthorDTO> toDtoList(List<Author> authors);
+
+    @Named("toUpper")
+    static String toUpperCase(String value) {
+        return value != null ? value.toUpperCase() : null;
+    }
     
 }

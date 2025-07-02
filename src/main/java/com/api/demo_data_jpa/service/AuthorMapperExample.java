@@ -56,7 +56,7 @@ public class AuthorMapperExample implements CommandLineRunner {
         List<AuthorDTO> authorDTOs = AuthorMapper.INSTANCE.toDtoList(authors);
 
         authorDTOs.forEach(dto -> System.out.println(
-                "Nome: " + dto.firstName() +
+                "Nome em formato UpperCase: " + dto.firstName() +
                 " | Sobrenome: " + dto.lastName() +
                 " | Email: " + dto.emailAddress() +
                 " | Idade: " + dto.age() +
