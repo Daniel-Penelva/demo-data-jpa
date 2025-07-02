@@ -2,10 +2,12 @@ package com.api.demo_data_jpa.model;
 
 import java.util.List;
 
+import com.api.demo_data_jpa.model.embedded.Address;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToMany;
@@ -76,6 +78,13 @@ public class Author extends BaseEntity{
     @ManyToMany(mappedBy = "authors", fetch = FetchType.LAZY)
     @JsonIgnore
     List<Course> courses;
+
+    
+    // @Embedded: Indica que a classe Address será incorporada na tabela Author.
+    // Isso significa que os campos da classe Address serão mapeados como colunas na tabela Author.
+    // A classe Address deve ser anotada com @Embeddable para ser usada como um tipo incorporado.
+    @Embedded
+    private Address address;
     
 }
 

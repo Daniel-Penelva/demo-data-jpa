@@ -19,7 +19,10 @@ public class AuthorComponentMapper {
                 author.getFirstName(),
                 author.getLastName(),
                 author.getEmail(),
-                author.getAge());
+                author.getAge(),
+                author.getAddress().getStreetName(),
+                author.getAddress().getHouseNumber(),
+                author.getAddress().getZipCode());
     }
 
 

@@ -156,7 +156,7 @@ public interface AuthorRepository extends JpaRepository<Author, Integer>{
 
 
     /* ==== 2) Utilizando DTO (Data Transfer Objects) AuthorDTO ==== */
-    @Query("SELECT new com.api.demo_data_jpa.dto.AuthorDTO(a.firstName, a.lastName, a.email, a.age) FROM Author a WHERE a.age > :age")
+    @Query("SELECT new com.api.demo_data_jpa.dto.AuthorDTO(a.firstName, a.lastName, a.email, a.age, a.address.streetName, a.address.houseNumber, a.address.zipCode) FROM Author a WHERE a.age > :age")
     List<AuthorDTO> buscarAutoresDTO(@Param("age") int age);
 
 
