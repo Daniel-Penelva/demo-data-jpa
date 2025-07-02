@@ -52,7 +52,7 @@ public class AuthorDTOExample implements CommandLineRunner{
         authorDTOs.forEach(dto -> System.out.println(
             "Nome: " + dto.firstName() 
             + " | Sobrenome: " + dto.lastName()
-            + " | Email: " + dto.email()
+            + " | Email: " + dto.emailAddress()
             + " | Idade: " + dto.age()
         ));
     }

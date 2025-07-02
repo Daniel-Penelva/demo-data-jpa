@@ -5391,6 +5391,93 @@ public class AuthorMapperExample implements CommandLineRunner {
 }
 ```
 
+### 2. Usando @Mapping para campos com nomes diferentes
+
+Imagine agora que o AuthorDTO tem o campo emailAddress ao invés de email. O MapStruct não sabe disso automaticamente, então é usado o @Mapping:
+
+📦 DTO com nome de campo diferente:
+
+```java
+public record AuthorDTO(String firstName, String lastName, String emailAddress, int age) {
+
+}
+```
+
+🛠️ Mapper com **`@Mapping`**:
+
+```java
+@Mapper
+public interface AuthorMapper {
+
+    // Este é um exemplo de como criar um mapper com MapStruct
+    AuthorMapper INSTANCE = Mappers.getMapper(AuthorMapper.class);
+
+    // 1) ENTIDADE -> DTO
+    // Converte uma entidade Author em um DTO AuthorDTO
+    @Mapping(source = "email", target = "emailAddress")  // Mapeia o campo email (vem da entidade) para emailAddress (vai para o DTO).
+    AuthorDTO toDto(Author author);
+
+    // Converte uma lista de entidades Author em uma lista de DTOs AuthorDTO
+    List<AuthorDTO> toDtoList(List<Author> authors);
+    
+}
+```
+
+**`source = "email"`** vem da entidade
+**`target = "emailAddress"`** vai para o DTO
+
+✅ Utilizando o mapper - Classe `AuthorMapperExample`
+
+```java
+@Component
+public class AuthorMapperExample implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        List<Author> authors = List.of(
+                // Criando autores
+                Author.builder()
+                        .firstName("Daniel")
+                        .lastName("Penelva")
+                        .email("daniel@gmail.com")
+                        .age(37)
+                        .build(),
+
+                Author.builder()
+                        .firstName("Maria")
+                        .lastName("Nunes")
+                        .email("maria@gmail.com")
+                        .age(25)
+                        .build(),
+
+                Author.builder()
+                        .firstName("Carlos")
+                        .lastName("Silva")
+                        .email("carlos@gmail.com")
+                        .age(28)
+                        .build());
+
+        authorRepository.saveAll(authors);
+
+        // 1) Exemplo 1 - Usando Mapstruct para mapear de Author para AuthorDTO
+        List<AuthorDTO> authorDTOs = AuthorMapper.INSTANCE.toDtoList(authors);
+
+        authorDTOs.forEach(dto -> System.out.println(
+                "Nome: " + dto.firstName() +
+                " | Sobrenome: " + dto.lastName() +
+                " | Email: " + dto.emailAddress() +
+                " | Idade: " + dto.age()
+        ));
+
+    }
+}
+```
+
 ---
 
 ## Feito por: `Daniel Penelva de Andrade`

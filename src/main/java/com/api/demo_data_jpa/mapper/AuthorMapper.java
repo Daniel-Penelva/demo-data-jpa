@@ -3,6 +3,7 @@ package com.api.demo_data_jpa.mapper;
 import java.util.List;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import com.api.demo_data_jpa.dto.AuthorDTO;
@@ -17,6 +18,7 @@ public interface AuthorMapper {
 
     // 1) ENTIDADE -> DTO
     // Converte uma entidade Author em um DTO AuthorDTO
+    @Mapping(source = "email", target = "emailAddress")  // Mapeia o campo email (vem da entidade) para emailAddress (vai para o DTO).
     AuthorDTO toDto(Author author);
 
     // Converte uma lista de entidades Author em uma lista de DTOs AuthorDTO
