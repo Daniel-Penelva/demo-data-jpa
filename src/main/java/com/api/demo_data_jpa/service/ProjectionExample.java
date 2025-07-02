@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
+//import org.springframework.stereotype.Component;
 
 import com.api.demo_data_jpa.dto.AuthorDTO;
 import com.api.demo_data_jpa.model.Author;
@@ -13,7 +13,7 @@ import com.api.demo_data_jpa.repository.AuthorRepository;
 
 import jakarta.transaction.Transactional;
 
-@Component
+//@Component
 public class ProjectionExample implements CommandLineRunner {
 
         @Autowired

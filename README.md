@@ -4972,6 +4972,235 @@ public class ProjectionExample implements CommandLineRunner {
 * Não funciona com métodos de relacionamento como `getCourses()` se não estiverem no `fetch`.
 * Projeções são **somente leitura**. Elas **não podem ser usadas para persistência**.
 
---- 
+---
+---
+
+# Componente Mapper
+
+## 📚 Introdução
+
+  - Um mapper é um padrão de projeto usado para mapear objetos de um domínio para outro, funcionando como uma ponte entre diferentes representações de dados.
+
+  - Ele abstrai a complexidade da conversão, facilita a reutilização de código, aumenta a flexibilidade para mudanças e melhora a testabilidade.
+
+  - Componente `Mapper` de forma geral é responsável por fazer a conversão entre objetos de domínio e objetos de transferência de dados. Ou seja, ele é responsável por fazer a conversão entre objetos que são usados para a persistência de dados e objetos que são usados para a transferência de dados entre os componentes da aplicação.
+
+  - O componente mapper é geralmente entendido como uma ferramenta ou padrão para mapear dados entre diferentes objetos ou camadas, facilitando a conversão entre entidades, DTOs (Data Transfer Objects) e outras representações de dados dentro de uma aplicação.
+
+  - Por exemplo, em aplicações que interagem com bancos de dados, mappers são usados para converter objetos de domínio em objetos de transferência de dados (DTOs) e vice-versa.
+
+
+## Implementações utilizadas
+
+✅ Entidade `Author`
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@SuperBuilder
+public class Author extends BaseEntity{
+
+    @Column(name = "first_name", nullable = false, length = 35)
+    @JsonProperty("first_name")
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    @JsonProperty("last_name")
+    private String lastName;
+    
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+    
+    @Column(nullable = false)
+    private int age;
+}
+```
+
+✅ Repositório `AuthorRepository`
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer>{
+}
+```
+
+✅ record DTO `AuthorDTO`
+
+```java
+public record AuthorDTO(String firstName, String lastName, String email, int age) {
+}
+```
+
+## Duas abordagens para implementar o `Mapper`:
+    - Inline
+    - Classe Mapper Separada
+
+🆚 Comparativo
+| Abordagem                       | Vantagem                                 | Limitação                               |
+| ------------------------------- | ---------------------------------------- | --------------------------------------- |
+| **Inline (como o seu exemplo)** | Rápido e direto para casos simples       | Dificulta reuso e testes unitários      |
+| **Classe Mapper separada**      | Mais organizado, testável e reutilizável | Leve aumento de complexidade estrutural |
+
+### 1. Exemplo de Implementação de Mapper Inline:
+
+✨ A ideia de `mapper manual inline` é simples: aqui, pode criar um método que projeta um objeto de domínio para um objeto de transferência de dados (DTO) ou outro objeto de domínio. Isso pode ser feito usando o método `map()` do `Stream` ou o método `map()` do `Optional`. 
+
+✨ Este exemplo não é uma boa prática, mas é uma abordagem simples para casos simples.
+
+🔧 Versão com Mapper usando `map()` do `Stream`:
+
+✅ Classe `AuthorComponentMapperExemple` usando `CommandLineRunner`
+
+```java
+@Component
+public class AuthorComponentMapperExemple implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Autowired
+    private AuthorMapper authorMapper;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        // Criando autores
+        var author1 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Penelva")
+                .email("daniel@gmail.com")
+                .age(37)
+                .build();
+
+        var author2 = Author.builder()
+                .firstName("Maria")
+                .lastName("Nunes")
+                .email("maria@gmail.com")
+                .age(25)
+                .build();
+
+        var author3 = Author.builder()
+                .firstName("Carlos")
+                .lastName("Silva")
+                .email("carlos@gmail.com")
+                .age(28)
+                .build();
+
+        authorRepository.saveAll(List.of(author1, author2, author3));
+
+        List<Author> authors = authorRepository.findAll();
+
+        // Convertendo para AuthorDTO usando o componente Mapper
+        // (aqui é usado uma abordagem manual, mas poderia ser feito com MapStruct ou ModelMapper)
+        //Exemplo 1 - Não é uma boa prática, mas é para fins de demonstração 
+        List<AuthorDTO> authorDTOs = authors.stream()
+                .map(author -> new AuthorDTO(
+                        author.getFirstName(),
+                        author.getLastName(),
+                        author.getEmail(),
+                        author.getAge()))
+                .toList();
+        
+    }
+
+}
+```
+
+### 2. Classe Mapper Separado
+
+✨ A ideia aqui é criar uma classe mapper separada para fazer a conversão entre as entidades e os DTOs. Isso é uma boa prática pois mantém a responsabilidade de conversão em uma classe específica e facilita a manutenção.
+
+🔧 Versão com Mapper separado:
+
+✅ Classe Mapper `AuthorMapper`
+
+```java
+@Component
+public class AuthorMapper {
+
+    // Converte um Author para AuthorDTO
+    public AuthorDTO toDTO(Author author) {
+        if (author == null) {
+            return null;
+        }
+        return new AuthorDTO(
+                author.getFirstName(),
+                author.getLastName(),
+                author.getEmail(),
+                author.getAge());
+    }
+
+
+    // Converte uma lista de Author para uma lista de AuthorDTO
+    public List<AuthorDTO> toDTOList(List<Author> authors) {
+        if (authors == null || authors.isEmpty()) {
+            return List.of();
+        }
+        return authors.stream()
+                .map(this::toDTO)
+                .toList();
+    }
+}
+```
+
+✅ Classe `AuthorComponentMapperExemple` usando `CommandLineRunner`
+
+```java
+@Component
+public class AuthorComponentMapperExemple implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Autowired
+    private AuthorMapper authorMapper;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        // Criando autores
+        var author1 = Author.builder()
+                .firstName("Daniel")
+                .lastName("Penelva")
+                .email("daniel@gmail.com")
+                .age(37)
+                .build();
+
+        var author2 = Author.builder()
+                .firstName("Maria")
+                .lastName("Nunes")
+                .email("maria@gmail.com")
+                .age(25)
+                .build();
+
+        var author3 = Author.builder()
+                .firstName("Carlos")
+                .lastName("Silva")
+                .email("carlos@gmail.com")
+                .age(28)
+                .build();
+
+        authorRepository.saveAll(List.of(author1, author2, author3));
+
+        List<Author> authors = authorRepository.findAll();
+
+        // Exemplo 2 - Usando o AuthorMapper - uma boa prática separa a lógica de conversão em um componente Mapper
+        List<AuthorDTO> authorDTOs = authorMapper.toDTOList(authors);
+
+        authorDTOs.forEach(dto -> System.out.println(
+            "Nome: " + dto.firstName()
+            + " | Sobrenome: " + dto.lastName()
+            + " | Email: " + dto.email()
+            + " | Idade: " + dto.age()
+        ));
+    }
+}
+```
+
+---
 
 ## Feito por: `Daniel Penelva de Andrade`
