@@ -5202,5 +5202,195 @@ public class AuthorComponentMapperExemple implements CommandLineRunner {
 ```
 
 ---
+---
+
+# Mapper utilizando MapStruct
+
+  - O MapStruct é uma biblioteca poderosa que automatiza o mapeamento entre entidades e DTOs com base em convenções — sem precisar escrever código manual de conversão.
+
+## Instalação MapStruct
+
+✨ Link de instalação do [MapStruct](https://mapstruct.org/documentation/installation/)
+
+✅ Adicionando a dependência do MapStruct - no Maven, adicionando no `pom.xml`:
+
+```xml
+...
+	<properties>
+		<java.version>21</java.version>
+		<org.mapstruct.version>1.6.3</org.mapstruct.version>
+	</properties>
+	<dependencies>
+		...
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>${org.mapstruct.version}</version>
+    	</dependency>
+		
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>3.4.6</source> <!-- depending on your project -->
+                	<target>3.4.6</target> <!-- depending on your project -->
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</path>
+
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${org.mapstruct.version}</version>
+                    	</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+				<configuration>
+					<excludes>
+						<exclude>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+						</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>
+```
+## Implementações utilizadas 
+
+✅ Entidade `Author`
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@SuperBuilder
+public class Author extends BaseEntity{
+
+    @Column(name = "first_name", nullable = false, length = 35)
+    @JsonProperty("first_name")
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    @JsonProperty("last_name")
+    private String lastName;
+    
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+    
+    @Column(nullable = false)
+    private int age;
+}
+```
+
+✅ Repositório `AuthorRepository`
+
+```java
+@Repository
+public interface AuthorRepository extends JpaRepository<Author, Integer>{
+}
+```
+
+✅ Record DTO `AuthorDTO`
+
+```java
+public record AuthorDTO(String firstName, String lastName, String email, int age) {
+
+}
+```
+
+## Exemplo de uso de Mapper 
+
+### 1. Sem o mapeamento de campo
+
+💡 Conversão de `Author` para `AuthorDTO` sem mapeamento de campo: **`ENTIDADE → DTO`**
+
+✅ Interface do Mapper `AuthorMapper`
+
+```java
+@Mapper
+public interface AuthorMapper {
+
+    // Este é um exemplo de como criar um mapper com MapStruct
+    AuthorMapper INSTANCE = Mappers.getMapper(AuthorMapper.class);
+
+    // 1) ENTIDADE -> DTO
+    // Converte uma entidade Author em um DTO AuthorDTO
+    AuthorDTO toDto(Author author);
+
+    // Converte uma lista de entidades Author em uma lista de DTOs AuthorDTO
+    List<AuthorDTO> toDtoList(List<Author> authors);
+    
+}
+```
+
+⚠️ Nota: Por padrão, MapStruct procura por nomes de campos iguais entre a entidade e o DTO.
+
+✅ Utilizando o mapper - Classe `AuthorMapperExample`
+
+```java
+@Component
+public class AuthorMapperExample implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        List<Author> authors = List.of(
+                // Criando autores
+                Author.builder()
+                        .firstName("Daniel")
+                        .lastName("Penelva")
+                        .email("daniel@gmail.com")
+                        .age(37)
+                        .build(),
+
+                Author.builder()
+                        .firstName("Maria")
+                        .lastName("Nunes")
+                        .email("maria@gmail.com")
+                        .age(25)
+                        .build(),
+
+                Author.builder()
+                        .firstName("Carlos")
+                        .lastName("Silva")
+                        .email("carlos@gmail.com")
+                        .age(28)
+                        .build());
+
+        authorRepository.saveAll(authors);
+
+        // 1) Exemplo 1 - Usando Mapstruct para mapear de Author para AuthorDTO
+        List<AuthorDTO> authorDTOs = AuthorMapper.INSTANCE.toDtoList(authors);
+
+        authorDTOs.forEach(dto -> System.out.println(
+                "Nome: " + dto.firstName() +
+                " | Sobrenome: " + dto.lastName() +
+                " | Email: " + dto.email() +
+                " | Idade: " + dto.age()
+        ));
+
+    }
+}
+```
+
+---
 
 ## Feito por: `Daniel Penelva de Andrade`

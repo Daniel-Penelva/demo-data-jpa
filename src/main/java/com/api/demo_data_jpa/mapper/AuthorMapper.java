@@ -2,34 +2,24 @@ package com.api.demo_data_jpa.mapper;
 
 import java.util.List;
 
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.factory.Mappers;
 
 import com.api.demo_data_jpa.dto.AuthorDTO;
 import com.api.demo_data_jpa.model.Author;
 
-@Component
-public class AuthorMapper {
 
-    // Converte um Author para AuthorDTO
-    public AuthorDTO toDTO(Author author) {
-        if (author == null) {
-            return null;
-        }
-        return new AuthorDTO(
-                author.getFirstName(),
-                author.getLastName(),
-                author.getEmail(),
-                author.getAge());
-    }
+@Mapper
+public interface AuthorMapper {
 
+    // Este é um exemplo de como criar um mapper com MapStruct
+    AuthorMapper INSTANCE = Mappers.getMapper(AuthorMapper.class);
 
-    // Converte uma lista de Author para uma lista de AuthorDTO
-    public List<AuthorDTO> toDTOList(List<Author> authors) {
-        if (authors == null || authors.isEmpty()) {
-            return List.of();
-        }
-        return authors.stream()
-                .map(this::toDTO)
-                .toList();
-    }
+    // 1) ENTIDADE -> DTO
+    // Converte uma entidade Author em um DTO AuthorDTO
+    AuthorDTO toDto(Author author);
+
+    // Converte uma lista de entidades Author em uma lista de DTOs AuthorDTO
+    List<AuthorDTO> toDtoList(List<Author> authors);
+    
 }

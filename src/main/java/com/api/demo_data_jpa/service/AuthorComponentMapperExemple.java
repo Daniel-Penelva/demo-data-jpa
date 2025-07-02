@@ -4,23 +4,23 @@ import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.stereotype.Component;
+//import org.springframework.stereotype.Component;
 
 import com.api.demo_data_jpa.dto.AuthorDTO;
-import com.api.demo_data_jpa.mapper.AuthorMapper;
+import com.api.demo_data_jpa.mapper.AuthorComponentMapper;
 import com.api.demo_data_jpa.model.Author;
 import com.api.demo_data_jpa.repository.AuthorRepository;
 
 import jakarta.transaction.Transactional;
 
-@Component
+//@Component
 public class AuthorComponentMapperExemple implements CommandLineRunner {
 
     @Autowired
     private AuthorRepository authorRepository;
 
     @Autowired
-    private AuthorMapper authorMapper;
+    private AuthorComponentMapper authorMapper;
 
     @Override
     @Transactional
