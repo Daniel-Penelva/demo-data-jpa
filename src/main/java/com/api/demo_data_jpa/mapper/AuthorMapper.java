@@ -2,6 +2,7 @@ package com.api.demo_data_jpa.mapper;
 
 import java.util.List;
 
+import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
@@ -36,5 +37,12 @@ public interface AuthorMapper {
     static String toUpperCase(String value) {
         return value != null ? value.toUpperCase() : null;
     }
-    
+
+    // 2) DTO -> ENTIDADE
+    // Converte um DTO AuthorDTO em uma entidade Author
+    @InheritInverseConfiguration  // Inverte o mapeamento do método toDto 
+    Author toEntity(AuthorDTO authorDTO);
+
+    List<Author> toEntitList(List<AuthorDTO> authorDTOs);
+
 }

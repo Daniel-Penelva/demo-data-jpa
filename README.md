@@ -5339,7 +5339,14 @@ public interface AuthorMapper {
 }
 ```
 
+⚠️ O método toDto converte uma entidade Author em um DTO AuthorDTO.
+
 ⚠️ Nota: Por padrão, MapStruct procura por nomes de campos iguais entre a entidade e o DTO.
+
+⚠️ Explicação:
+  - **Author:** Representa a entidade do domínio, contendo os dados completos e possivelmente relacionamentos com outras entidades.
+
+  - **AuthorDTO:** é um objeto simplificado usado para transferir dados, por exemplo, entre camadas da aplicação ou para a interface do usuário, contendo apenas os campos necessários.
 
 ✅ Utilizando o mapper - Classe `AuthorMapperExample`
 
@@ -5708,6 +5715,87 @@ public class AuthorMapperExample implements CommandLineRunner {
     }
 }
 ```
+
+### 5. Mapeamento reverso (DTO → Entity)
+
+  - Transforma os dados simplificados do DTO em uma entidade do domínio, que pode ser persistida no banco ou usada internamente na aplicação.
+
+✅ Etapas da conversão reversa
+
+🛠️ Atualizando o `AuthorMapper` com o método reverso:
+
+```java
+@Mapper
+public interface AuthorMapper {
+
+    // 2) DTO -> ENTIDADE
+    // Converte um DTO AuthorDTO em uma entidade Author
+    @InheritInverseConfiguration  // Inverte o mapeamento do método toDto 
+    Author toEntity(AuthorDTO authorDTO);
+
+    List<Author> toEntitList(List<AuthorDTO> authorDTOs);
+
+}
+```
+
+🔁 @InheritInverseConfiguration reaproveita automaticamente o mapeamento reverso.
+
+✅ Utilizando o mapper - Classe `AuthorMapperExample`
+
+```java
+@Component
+public class AuthorMapperExample implements CommandLineRunner {
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        // 2) Exemplo 2 - Usando Mapstruct para mapear de AuthorDTO para Author
+
+        AuthorDTO dto1 = new AuthorDTO("Ana", "Souza", "ana@gmail.com", 30, "Rua das Palmeiras", "321", "98765-432");          
+
+        AuthorDTO dto2 = new AuthorDTO("Pedro", "Oliveira", "pedro@gmail.com", 40, "Avenida Central", "654", "12345-678");
+
+        AuthorDTO dto3 = new AuthorDTO("Flávia", "Nunes", "flavia@gmail.com", 45, "Avenida das Américas", "456", "98990-889");
+
+        // Convrtendo AuthorDTO para Author (entidade)
+        Author author1 = AuthorMapper.INSTANCE.toEntity(dto1);
+        Author author2 = AuthorMapper.INSTANCE.toEntity(dto2);
+        Author author3 = AuthorMapper.INSTANCE.toEntity(dto3);
+
+        System.out.println("\n Exemplo 2 - Usando Mapstruct para mapear de AuthorDTO para Author");
+
+        // Imprimindo os dados dos autores convertidos
+        for (Author author : List.of(author1, author2, author3)) {
+            
+            authorRepository.save(author);  // Salvando os autores convertidos no banco de dados
+
+            System.out.println("Nome: " + author.getFirstName()
+                + " | Sobrenome: " + author.getLastName()
+                + " | Idade: " + author.getAge()
+                + " | Email: " + author.getEmail()
+                + " | Rua: " + author.getAddress().getStreetName()
+                + " | Número: " + author.getAddress().getHouseNumber()
+                + " | CEP: " + author.getAddress().getZipCode());
+        }
+    }
+}
+```
+
+🧠 Resumo
+  - toDto() → transforma uma entidade em DTO (útil para envio via API).
+
+  - toEntity() → transforma um DTO recebido em entidade (útil para salvar no banco).
+
+  - Com @InheritInverseConfiguration, evitamos reescrever os mapeamentos manuais.
+
+| Método                      | Parâmetro       | Retorno       | Função                                    |
+|-----------------------------|-----------------|---------------|-------------------------------------------|
+| `AuthorDTO toDto(Author a)` | `Author`        | `AuthorDTO`   | Converte entidade para DTO                |
+| `Author toEntity(AuthorDTO d)` | `AuthorDTO`     | `Author`      | Converte DTO para entidade       
 
 ---
 
