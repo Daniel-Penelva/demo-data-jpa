@@ -1,11 +1,13 @@
 package com.api.demo_data_jpa.model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.api.demo_data_jpa.model.embedded.Address;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
@@ -13,6 +15,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.NamedQueries;
 import jakarta.persistence.NamedQuery;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -57,6 +60,22 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 public class Author extends BaseEntity{
 
+    // Criando os construtores
+    public Author(String firstName, String lastName, String email, int age) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.age = age;
+    }
+
+    public Author(String firstName, String lastName, String email, int age, List<Book> books) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.age = age;
+        this.books = books;
+    }
+
     @Column(name = "first_name", nullable = false, length = 35)
     @JsonProperty("first_name")
     private String firstName;
@@ -85,6 +104,11 @@ public class Author extends BaseEntity{
     // A classe Address deve ser anotada com @Embeddable para ser usada como um tipo incorporado.
     @Embedded
     private Address address;
+
+
+    // Um autor pode ter vários livros, mas um livro pertence a um único autor.
+    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
+    private List<Book> books = new ArrayList<>();
     
 }
 

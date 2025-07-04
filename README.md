@@ -5798,5 +5798,567 @@ public class AuthorMapperExample implements CommandLineRunner {
 | `Author toEntity(AuthorDTO d)` | `AuthorDTO`     | `Author`      | Converte DTO para entidade       
 
 ---
+---
+
+# 🧠 O que é `JpaSpecificationExecutor`?
+
+É um recurso poderoso do Spring Data JPA para construir **consultas dinâmicas, reutilizáveis e compostas**.
+
+É uma interface que, quando adicionada ao seu repositório, permite usar **Specifications**, que são objetos que encapsulam pedaços de critérios de busca (filtros). Com isso, você pode construir **consultas condicionais em tempo de execução**, como:
+
+* Buscar autores com nome específico **E** idade mínima.
+* Buscar apenas autores com e-mail que contenha "gmail".
+* Criar filtros condicionais com `AND`, `OR`, `NOT`.
+
+
+## ✅ Estrutura básica para usar `JpaSpecificationExecutor`
+
+### 📌 1. Estenda no repositório
+
+```java
+public interface AuthorRepository extends JpaRepository<Author, Integer>, JpaSpecificationExecutor<Author> {
+}
+```
+
+
+### 📌 2. Crie a classe de especificações
+
+```java
+public interface AuthorSpecifications {
+
+    // Define métodos estáticos para construir especificações de pesquisa para a entidade Author
+
+    // Método para verificar se o primeiro nome é igual a um valor específico
+    public static Specification<Author> hasFirstName(String firstName) {
+        return (root, query, criteriaBuilder) -> firstName == null ? null : criteriaBuilder.equal(root.get("firstName"), firstName);
+    }
+
+    // Método para verificar se a idade é maior que um valor específico
+    public static Specification<Author> hasAgeGreaterThan(int age) {
+        return (root, query, criteriaBuilder) -> age <= 0 ? null : criteriaBuilder.greaterThan(root.get("age"), age);
+    }
+
+    // Método para verificar se o email contém um fragmento específico
+    // O fragmento é convertido para minúsculas para garantir que a busca seja case-ins
+    public static Specification<Author> emailsContains(String fragment) {
+        return (root, query, criteriaBuilder) -> fragment == null ? null : criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), "%" + fragment.toLowerCase() + "%");
+        
+    }
+
+
+    // Método para construir uma Specification baseada em um AuthorFilter
+    // O AuthorFilter é um DTO que contém os critérios de filtro para a pesquisa.
+    public static Specification<Author> build(AuthorFilter filter) {
+        return Specification
+        .where(firstNameLike(filter.getFirstName()))
+        .and(emailsContains(filter.getEmailFragment()))
+        .and(null != ageGreaterThanOrEqual(filter.getMinAge()) ? ageGreaterThanOrEqual(filter.getMinAge()) : null)
+        .and(null != ageLessThanOrEqual(filter.getMaxAge()) ? ageLessThanOrEqual(filter.getMaxAge()) : null);
+    } 
+
+    // Método para verificar se o primeiro nome é igual a um valor específico
+    private static Specification<Author> firstNameLike(String firstname) {
+        return (root, query, criteriaBuilder) -> firstname != null && !firstname.isEmpty() ? 
+            criteriaBuilder.like(criteriaBuilder.lower(root.get("firstName")), "%" + firstname.toLowerCase() + "%") : null;
+    }
+
+    // Método para verificar se a idade é maior ou igual a um valor específico
+    private static Specification<Author> ageGreaterThanOrEqual(Integer age) {
+        return (root, query, criteriaBuilder) -> age != null && age > 0 ? 
+            criteriaBuilder.greaterThanOrEqualTo(root.get("age"), age) : null;
+    }
+
+    // Método para verificar se a idade é menor ou igual a um valor específico
+    private static Specification<Author> ageLessThanOrEqual(Integer age) {
+        return (root, query, criteriaBuilder) -> age != null && age > 0 ? 
+            criteriaBuilder.lessThanOrEqualTo(root.get("age"), age) : null;
+    }
+
+}
+```
+
+### 📌 3. Usando as especificações no serviço ou `CommandLineRunner`
+
+```java
+@Component
+public class AuthorSpecificationExample implements CommandLineRunner{
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        authorRepository.saveAll(List.of(
+            new Author("Daniel", "Penelva", "daniel.penelva@gmail.com", 37),
+            new Author("João", "Silva", "joao.silva@gmail.com", 25),
+            new Author("Maria", "Pereira", "maria.pereira@gmail.com", 30),
+            new Author("Maria", "Nunes", "maria.nunes@gmail.com", 25),
+            new Author("Carlos", "Silva", "carlos@empresa.com", 32),
+            new Author("João", "Lima", "joao.lima@gmail.com", 41),
+            new Author("Maria", "Moraes", "maria.moraes@gmail.com", 34),
+            new Author("Daniel", "Oliveira", "daniel.oliveira@gmail.com", 35),
+            new Author("Bolsonaro", "Mito", "bolsonaro@gmail.com", 60),
+            new Author("Lula", "Ladrão", "lula.ladrao@gmail.com", 70),
+            new Author("Danilo", "Marques", "danilo@gmail.com", 50)
+        ));
+        
+        // 1) Usando Specification para buscar autores com nome 'Daniel' e idade maior que 30 e que o email contenha 'gmail'
+        List<Author> specificAuthors = authorRepository.findAll(
+            Specification.where(AuthorSpecifications.hasFirstName("Daniel"))
+            .and(null != AuthorSpecifications.hasAgeGreaterThan(30) ? AuthorSpecifications.hasAgeGreaterThan(30) : null)
+            .and(AuthorSpecifications.emailsContains("gmail"))
+        );
+
+        System.out.println("\n === Autores especificados com nome 'Daniel' e idade maior (>) que 30 e email contendo 'gmail'");
+        specificAuthors.forEach(a -> System.out.println("Nome: " + a.getFirstName() +
+            "| Sobrenome: " + a.getLastName() +
+            "| Idade: " + a.getAge() + 
+            "| Email: " + a.getEmail()));
+
+    }
+    
+}
+```
+
+## ✨ Benefícios das Especificações
+
+| Vantagem        | Explicação                                                    |
+| --------------- | ------------------------------------------------------------- |
+| 🔁 Reutilizável | Reúsa a lógica em várias consultas.                           |
+| 🧩 Combinável   | Combine com `.and()`, `.or()`, `.not()` de forma dinâmica.    |
+| 🧽 Limpa código | Evita métodos derivados longos no repositório.                |
+| 🛠️ Dinâmico    | Perfeito para filtros com campos opcionais (ex: formulários). |
+
+## 👇 Aprofundando com alguns exemplos:
+
+### Paginação e Ordenação com `Specifications`
+
+🎯 Objetivo:
+Listar autores com filtros usando Specifications, mas retornando os resultados paginados — exemplo: 10 autores por página, ordenados por idade, etc.
+
+✅ Paginação e ordenação
+
+Vai ser usado a classe PageRequest (implementa Pageable) e aplicar na consulta.
+
+```java
+@Component
+public class AuthorSpecificationExample implements CommandLineRunner{
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        authorRepository.saveAll(List.of(
+            new Author("Daniel", "Penelva", "daniel.penelva@gmail.com", 37),
+            new Author("João", "Silva", "joao.silva@gmail.com", 25),
+            new Author("Maria", "Pereira", "maria.pereira@gmail.com", 33),
+            new Author("Maria", "Nunes", "maria.nunes@gmail.com", 25),
+            new Author("Carlos", "Silva", "carlos@empresa.com", 32),
+            new Author("João", "Lima", "joao.lima@gmail.com", 41),
+            new Author("Maria", "Moraes", "maria.moraes@gmail.com", 34),
+            new Author("Daniel", "Oliveira", "daniel.oliveira@gmail.com", 35),
+            new Author("Bolsonaro", "Mito", "bolsonaro@gmail.com", 60),
+            new Author("Lula", "Ladrão", "lula.ladrao@gmail.com", 70),
+            new Author("Danilo", "Marques", "danilo@gmail.com", 50)
+        ));
+
+        // 2) Usando Paginação e Ordenação
+
+        //  A consulta irá retornar uma página de autores com nome 'Daniel', idade maior que 30 e email contendo 'gmail', ordenada por idade em ordem decrescente, com 2 elementos por página.
+        Specification<Author> specification = Specification.where(AuthorSpecifications.hasFirstName("Maria"))
+            .and(null != AuthorSpecifications.hasAgeGreaterThan(30) ? AuthorSpecifications.hasAgeGreaterThan(30) : null)
+            .and(AuthorSpecifications.emailsContains("gmail"));
+
+        Pageable pageable = PageRequest.of(0, 2, Sort.by("age").descending()); // Paginação com 2 elementos por página e ordenação decrescente pela idade
+
+        Page<Author> page = authorRepository.findAll(specification, pageable);  // Usando a lista de autores especificados como filtro.
+
+        
+        System.out.println("\n === Autores filtrados com Paginação e Ordenação");
+        page.forEach(p -> System.out.println("Nome: " + p.getFirstName() +
+            "| Sobrenome: " + p.getLastName() +
+            "| Idade: " + p.getAge() + 
+            "| Email: " + p.getEmail()));
+
+        System.out.println("Total de Autores: " + page.getTotalElements());
+        System.out.println("Total de Páginas: " + page.getTotalPages());
+        System.out.println("Página Atual: " + page.getNumber());
+        System.out.println("Tamanho da Página: " + page.getSize());
+        System.out.println("Tem Próxima Página? " + page.hasNext());
+        System.out.println("Tem Página Anterior? " + page.hasPrevious());
+
+    }
+    
+}
+```
+
+### Especificação dinâmica com DTO de filtro
+
+🎯 Objetivo:
+Essa abordagem é ideal para cenários onde os filtros vêm de forma dinâmica — como uma requisição de busca avançada em um formulário.
+
+✅ Criando o AuthorFilter (DTO de Filtro)
+
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class AuthorFilter {
+
+    // DTO de filtro para Author
+    private String firstName;
+    private String emailFragment;
+    private Integer minAge;
+    private Integer maxAge;
+
+}
+```
+
+✅ Criando a Specification dinâmica com base no DTO
+
+```java
+public interface AuthorSpecifications {
+
+    // Método para construir uma Specification baseada em um AuthorFilter
+    // O AuthorFilter é um DTO que contém os critérios de filtro para a pesquisa.
+    public static Specification<Author> build(AuthorFilter filter) {
+        return Specification
+        .where(firstNameLike(filter.getFirstName()))
+        .and(emailsContains(filter.getEmailFragment()))
+        .and(null != ageGreaterThanOrEqual(filter.getMinAge()) ? ageGreaterThanOrEqual(filter.getMinAge()) : null)
+        .and(null != ageLessThanOrEqual(filter.getMaxAge()) ? ageLessThanOrEqual(filter.getMaxAge()) : null);
+    } 
+
+    // Método para verificar se o primeiro nome é igual a um valor específico
+    private static Specification<Author> firstNameLike(String firstname) {
+        return (root, query, criteriaBuilder) -> firstname != null && !firstname.isEmpty() ? 
+            criteriaBuilder.like(criteriaBuilder.lower(root.get("firstName")), "%" + firstname.toLowerCase() + "%") : null;
+    }
+
+    // Método para verificar se a idade é maior ou igual a um valor específico
+    private static Specification<Author> ageGreaterThanOrEqual(Integer age) {
+        return (root, query, criteriaBuilder) -> age != null && age > 0 ? 
+            criteriaBuilder.greaterThanOrEqualTo(root.get("age"), age) : null;
+    }
+
+    // Método para verificar se a idade é menor ou igual a um valor específico
+    private static Specification<Author> ageLessThanOrEqual(Integer age) {
+        return (root, query, criteriaBuilder) -> age != null && age > 0 ? 
+            criteriaBuilder.lessThanOrEqualTo(root.get("age"), age) : null;
+    }
+
+}
+```
+
+✅ Exemplo real com CommandLineRunner (simulando uso do filtro)
+
+```java
+@Component
+public class AuthorSpecificationExample implements CommandLineRunner{
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        authorRepository.saveAll(List.of(
+            new Author("Daniel", "Penelva", "daniel.penelva@gmail.com", 37),
+            new Author("João", "Silva", "joao.silva@gmail.com", 25),
+            new Author("Maria", "Pereira", "maria.pereira@gmail.com", 33),
+            new Author("Maria", "Nunes", "maria.nunes@gmail.com", 25),
+            new Author("Carlos", "Silva", "carlos@empresa.com", 32),
+            new Author("João", "Lima", "joao.lima@gmail.com", 41),
+            new Author("Maria", "Moraes", "maria.moraes@gmail.com", 34),
+            new Author("Daniel", "Oliveira", "daniel.oliveira@gmail.com", 35),
+            new Author("Bolsonaro", "Mito", "bolsonaro@gmail.com", 60),
+            new Author("Lula", "Ladrão", "lula.ladrao@gmail.com", 70),
+            new Author("Danilo", "Marques", "danilo@gmail.com", 50)
+        ));
+        
+        // 1) Usando Specification para buscar autores com nome 'Daniel' e idade maior que 30 e que o email contenha 'gmail'
+        List<Author> specificAuthors = authorRepository.findAll(
+            Specification.where(AuthorSpecifications.hasFirstName("Daniel"))
+            .and(null != AuthorSpecifications.hasAgeGreaterThan(30) ? AuthorSpecifications.hasAgeGreaterThan(30) : null)
+            .and(AuthorSpecifications.emailsContains("gmail"))
+        );
+
+        System.out.println("\n === Autores especificados com nome 'Daniel' e idade maior (>) que 30 e email contendo 'gmail'");
+        specificAuthors.forEach(a -> System.out.println("Nome: " + a.getFirstName() +
+            "| Sobrenome: " + a.getLastName() +
+            "| Idade: " + a.getAge() + 
+            "| Email: " + a.getEmail()));
+
+
+        // 2) Usando Paginação e Ordenação
+
+        // A consulta irá retornar uma página de autores com nome 'Daniel', idade maior que 30 e email contendo 'gmail', ordenada por idade em ordem decrescente, com 2 elementos por página.
+        Specification<Author> specification = Specification.where(AuthorSpecifications.hasFirstName("Maria"))
+            .and(null != AuthorSpecifications.hasAgeGreaterThan(30) ? AuthorSpecifications.hasAgeGreaterThan(30) : null)
+            .and(AuthorSpecifications.emailsContains("gmail"));
+
+        Pageable pageable = PageRequest.of(0, 2, Sort.by("age").descending()); // Paginação com 2 elementos por página e ordenação decrescente pela idade
+
+        Page<Author> page = authorRepository.findAll(specification, pageable);  // Usando a lista de autores especificados como filtro.
+
+        
+        System.out.println("\n === Autores filtrados com Paginação e Ordenação");
+        page.forEach(p -> System.out.println("Nome: " + p.getFirstName() +
+            "| Sobrenome: " + p.getLastName() +
+            "| Idade: " + p.getAge() + 
+            "| Email: " + p.getEmail()));
+
+        System.out.println("Total de Autores: " + page.getTotalElements());
+        System.out.println("Total de Páginas: " + page.getTotalPages());
+        System.out.println("Página Atual: " + page.getNumber());
+        System.out.println("Tamanho da Página: " + page.getSize());
+        System.out.println("Tem Próxima Página? " + page.hasNext());
+        System.out.println("Tem Página Anterior? " + page.hasPrevious());
+
+
+        // 3) Filtro com AuthorFilter queé um DTO que contém os critérios de filtro para a pesquisa.
+
+        System.out.println("\n === Filtro com AuthorFilter ===");
+
+        // Criando um AuthorFilter com os critérios de filtro
+        AuthorFilter filter = new AuthorFilter();
+        filter.setFirstName("Da");
+        filter.setEmailFragment("gmail");
+        filter.setMinAge(30);
+        filter.setMaxAge(61);
+
+        Page<Author> pagina = authorRepository.findAll(AuthorSpecifications.build(filter), pageable);
+
+        System.out.println("\n === Autores filtrados com Paginação e Ordenação");
+        pagina.forEach(p -> System.out.println("Nome: " + p.getFirstName() +
+            "| Sobrenome: " + p.getLastName() +
+            "| Idade: " + p.getAge() + 
+            "| Email: " + p.getEmail()));
+
+        System.out.println("Total de Autores: " + pagina.getTotalElements());
+
+    }
+    
+}
+```
+
+🧠 Vantagens dessa abordagem:
+  - Filtros dinâmicos e reutilizáveis.
+
+  - Ótimo para sistemas com muitas combinações possíveis de busca.
+
+  - Facilmente adaptável a REST com @RequestParam ou @RequestBody.
+
+
+### Filtros com relacionamentos (`Join`)
+
+🎯 Objetivo:
+Esse cenário é essencial quando se quer buscar dados de uma entidade com base em critérios da entidade relacionada.
+
+🎯 Cenário:
+Imaginar a seguinte estrutura:
+
+  - Um Author tem vários Books (relação OneToMany).
+
+  - Vai ser buscado autores com filtros opcionais do próprio Author e também do título do Book (ou outro atributo relacionado).
+
+✅ 1. Estrutura das entidades
+
+`Author` 
+
+```java
+@Entity
+@Table(name = "AUTHOR_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@SuperBuilder
+public class Author extends BaseEntity{
+
+    // Criando os construtores
+    public Author(String firstName, String lastName, String email, int age) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.age = age;
+    }
+
+    public Author(String firstName, String lastName, String email, int age, List<Book> books) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.age = age;
+        this.books = books;
+    }
+
+    @Column(name = "first_name", nullable = false, length = 35)
+    @JsonProperty("first_name")
+    private String firstName;
+
+    @Column(name = "last_name", nullable = false, length = 50)
+    @JsonProperty("last_name")
+    private String lastName;
+    
+    @Column(nullable = false, unique = true, length = 100)
+    private String email;
+    
+    @Column(nullable = false)
+    private int age;
+
+    // Um autor pode ter vários livros, mas um livro pertence a um único autor.
+    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
+    private List<Book> books = new ArrayList<>();
+    
+}
+```
+
+`Book` 
+
+```java
+@Entity
+@Table(name = "BOOK_TBL")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(callSuper = true)
+@ToString(callSuper = true)
+@SuperBuilder
+public class Book extends BaseEntity{
+
+    private String title;
+
+    // Muitos livros podem ter o mesmo autor, mas um livro pertence a um único autor.
+    @ManyToOne
+    @JoinColumn(name = "author_id")
+    private Author author;
+    
+}
+```
+
+✅ 2. Criando o DTO de filtro
+
+`AuthorBookFilter`
+
+```java
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class AuthorBookFilter {
+
+    private String firstName;
+    private String bookTitleFragment;
+    private Integer minAge;
+    
+}
+```
+
+✅ 3. Criando a Specification com JOIN
+
+`AuthorSpecifications`
+
+```java
+public interface AuthorSpecifications {
+
+    // Define métodos estáticos para construir especificações de pesquisa para a entidade Author
+
+    // O AuthorBookFilter é um DTO que contém os critérios de filtro para a pesquisa de autores e livros.
+    public static Specification<Author> buildBookFilter(AuthorBookFilter filter) {
+        return Specification
+        .where(hasFirstName(filter.getFirstName()))
+        .and(null != filter.getMinAge() ? hasAgeGreaterThan(filter.getMinAge()) : null)
+        .and(bookTitleContains(filter.getBookTitleFragment()));
+    }
+
+    // Método para verificar se o primeiro nome é igual a um valor específico
+    public static Specification<Author> hasFirstName(String firstName) {
+        return (root, query, criteriaBuilder) -> firstName == null ? null : criteriaBuilder.equal(root.get("firstName"), firstName);
+    }
+
+    // Método para verificar se a idade é maior que um valor específico
+    public static Specification<Author> hasAgeGreaterThan(int age) {
+        return (root, query, criteriaBuilder) -> age <= 0 ? null : criteriaBuilder.greaterThan(root.get("age"), age);
+    }
+
+
+    // Método para verificar se o titulo do livro contém um fragmento específico
+    // O fragmento é convertido para minúsculas para garantir que a busca seja case-ins
+    private static Specification<Author> bookTitleContains(String titleFragment) {
+        return (root, query, criteriaBuilder) -> {
+            if (titleFragment == null || titleFragment.isEmpty()) {
+                return null;
+            }
+            
+            root.fetch("books", JoinType.LEFT);  // Faz o join com a entidade Book
+            query.distinct(true);  // Garante que os resultados sejam distintos
+            Join<Author, Book> join = root.join("books", JoinType.LEFT); // Faz o join com a entidade Book
+            return criteriaBuilder.like(criteriaBuilder.lower(join.get("title")), "%" + titleFragment.toLowerCase() + "%");
+
+        };
+    }
+}
+```
+
+✅ 4. Exemplo com CommandLineRunner
+
+`AuthorSpecificationExample`
+
+```java
+@Component
+public class AuthorSpecificationExample implements CommandLineRunner{
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Override
+    @Transactional
+    public void run(String... args) throws Exception {
+
+        // 4) Filtro com Join para buscar relação entre Autor e Livro
+        System.out.println("\n === Filtro com Join entre Autor e Livro ===");
+
+        // Criando Autores e Livros
+        var author1 = new Author("Caio", "Roberto", "caio@gmail.com", 36, new ArrayList<>());
+        var author2 = new Author("Ana", "Clara", "ana@gmail", 40, new ArrayList<>());
+
+        var book1 = new Book("Java Básico", author1);
+        var book2 = new Book("Spring Boot Avançado", author1);
+        var book3 = new Book("Clean Code", author2);
+
+        author1.setBooks(List.of(book1, book2));
+        author2.setBooks(List.of(book3));
+
+        authorRepository.saveAll(List.of(author1, author2));
+
+        // Filtro Dinâmico com Join
+        AuthorBookFilter filterAuthorBook = new AuthorBookFilter();
+        filterAuthorBook.setFirstName("Caio");
+        filterAuthorBook.setBookTitleFragment("spring");
+        filterAuthorBook.setMinAge(30);
+
+        Pageable pageableJoin = PageRequest.of(0, 5);
+        var paginaJoin = authorRepository.findAll(AuthorSpecifications.buildBookFilter(filterAuthorBook), pageableJoin);
+
+        System.out.println("\n=== Resultado da busca com JOIN ===");
+        paginaJoin.getContent().forEach(a -> System.out.println("Autor: " + a.getFirstName() + 
+        " | Idade: " + a.getAge() + 
+        " | Nome do Livro:" + a.getBooks().stream()
+            .map(Book::getTitle)
+            .findFirst()
+            .orElse("Nenhum livro encontrado")));
+    }
+    
+}
+```
+
+🧠 Dica:
+Quando se usa o JOIN com fetch(), é necessário usar query.distinct(true) para evitar autores duplicados (caso o autor tenha múltimos livros que batam no filtro).
 
 ## Feito por: `Daniel Penelva de Andrade`

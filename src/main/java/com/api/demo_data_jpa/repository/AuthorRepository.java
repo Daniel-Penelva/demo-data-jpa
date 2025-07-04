@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,7 +17,7 @@ import com.api.demo_data_jpa.projection.AuthorView;
 import jakarta.transaction.Transactional;
 
 @Repository
-public interface AuthorRepository extends JpaRepository<Author, Integer>{
+public interface AuthorRepository extends JpaRepository<Author, Integer>, JpaSpecificationExecutor<Author>{
 
     // SQL: SELECT * FROM author WHERE email = 'daniel@gmail.com'
     // JPQL: SELECT a FROM Author a WHERE a.email = :email
@@ -203,4 +204,10 @@ public interface AuthorRepository extends JpaRepository<Author, Integer>{
  * 
  * @Modifying - Indica que é uma query de modificação.
  * @Transactional - Necessário, pois update precisa estar em uma transação.
+ * 
+ * JpaSpecificationExecutor<Author> - Interface que permite criar consultas dinâmicas e complexas usando especificações.
+ *  - Permite construir consultas de forma programática, utilizando critérios de pesquisa dinâmicos.
+ *  - Útil para cenários onde as condições de pesquisa podem variar em tempo de execução.
+ *  - Permite combinar múltiplas condições de pesquisa de forma flexível.
+ * 
 */
